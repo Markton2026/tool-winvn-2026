@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shipping Cost Calculator — EXW → FOB → CNF → CIF</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#1a56db;--blue-dark:#1648c5;--blue-light:#e6f1fb;
+  --green-light:#eaf3de;--green-dark:#27500a;
+  --amber-light:#faeeda;--amber-dark:#633806;
+  --border:#e5e7eb;--radius:8px;--radius-lg:12px;
+  --text:#1f2937;--text-muted:#6b7280;--text-light:#9ca3af;
+  --bg:#ffffff;--bg-secondary:#f9fafb;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--text);background:#f3f4f6;min-height:100vh}
+.app{max-width:980px;margin:0 auto;padding:20px 16px}
+.header{background:var(--blue);color:#fff;border-radius:var(--radius-lg);padding:18px 24px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:19px;font-weight:600;margin-bottom:2px}
+.header p{font-size:12px;opacity:0.8}
+.tabs{display:flex;gap:4px;margin-bottom:14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:4px}
+.tab-btn{flex:1;padding:8px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--text-muted);border-radius:6px;font-family:inherit;transition:all .15s}
+.tab-btn.active{background:var(--blue);color:#fff}
+.section{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:10px}
+.section-title{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.field{display:flex;flex-direction:column;gap:3px}
+.field label{font-size:11px;color:var(--text-muted);font-weight:500}
+.field input,.field select{padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:inherit;font-size:13px;transition:border-color .15s}
+.field input:focus,.field select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,219,.1)}
+.transport-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.transport-btn{padding:10px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);cursor:pointer;font-size:12px;font-weight:500;color:var(--text-muted);font-family:inherit;text-align:center;transition:all .15s;line-height:1.4}
+.transport-btn:hover{border-color:var(--blue);color:var(--blue)}
+.transport-btn.active{background:var(--blue-light);border-color:var(--blue);color:var(--blue)}
+.transport-btn span{display:block;font-size:10px;font-weight:400;margin-top:2px;opacity:.75}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:7px 8px;color:var(--text-muted);font-weight:500;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap}
+td{padding:3px 3px;vertical-align:middle}
+td input,td select{width:100%;padding:5px 7px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12px}
+td input:focus,td select:focus{outline:none;border-color:var(--blue)}
+.btn-add{display:flex;align-items:center;gap:6px;padding:7px 12px;border:1px dashed #9ca3af;border-radius:var(--radius);background:none;cursor:pointer;font-size:12px;color:var(--text-muted);font-family:inherit;margin-top:8px;transition:all .15s}
+.btn-add:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-light)}
+.btn-del{padding:4px 7px;border:none;background:none;cursor:pointer;color:var(--text-light);font-size:14px;border-radius:4px;transition:all .15s}
+.btn-del:hover{color:#dc2626;background:#fef2f2}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.btn-primary{padding:10px 22px;border:none;background:var(--blue);color:#fff;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;transition:background .15s}
+.btn-primary:hover{background:var(--blue-dark)}
+.btn-secondary{padding:10px 16px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:var(--radius);cursor:pointer;font-size:13px;font-family:inherit;transition:all .15s}
+.btn-secondary:hover{background:var(--bg-secondary)}
+.btn-excel{padding:9px 14px;border:none;background:#217346;color:#fff;border-radius:var(--radius);cursor:pointer;font-size:13px;font-family:inherit;font-weight:500}
+.btn-excel:hover{background:#1a5c38}
+.btn-pdf{padding:9px 14px;border:none;background:#dc2626;color:#fff;border-radius:var(--radius);cursor:pointer;font-size:13px;font-family:inherit;font-weight:500}
+.btn-pdf:hover{background:#b91c1c}
+
+/* KẾT QUẢ REAL-TIME — luôn hiện, không ẩn */
+.live-results{background:var(--bg);border:2px solid var(--blue);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:10px;position:sticky;top:8px;z-index:10;box-shadow:0 4px 20px rgba(26,86,219,.12)}
+.live-badge{display:inline-flex;align-items:center;gap:6px;background:var(--blue);color:#fff;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;margin-bottom:10px}
+.live-dot{width:6px;height:6px;background:#4ade80;border-radius:50%;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.res-grid-main{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+.res-card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;text-align:center}
+.res-card.highlight{background:var(--blue-light);border-color:var(--blue)}
+.res-label{font-size:10px;color:var(--text-muted);margin-bottom:3px;font-weight:500}
+.res-value{font-size:22px;font-weight:700;color:var(--text)}
+.res-sub{font-size:11px;color:var(--text-muted);margin-top:2px}
+.res-grid-secondary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.res-card-sm{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;text-align:center}
+.res-card-sm.highlight{background:var(--blue-light);border-color:var(--blue)}
+.res-label-sm{font-size:10px;color:var(--text-muted);margin-bottom:2px}
+.res-value-sm{font-size:15px;font-weight:600;color:var(--text)}
+
+.detail-section{display:none}
+.detail-section.open{display:block}
+.detail-toggle{background:none;border:1px solid var(--border);border-radius:var(--radius);padding:6px 14px;font-size:12px;color:var(--text-muted);cursor:pointer;font-family:inherit;margin-top:8px;width:100%;text-align:center;transition:all .15s}
+.detail-toggle:hover{background:var(--bg-secondary)}
+
+.summary-table tr{border-bottom:1px solid #f3f4f6}
+.summary-table td{padding:6px 8px;font-size:12px}
+.summary-table td:last-child{text-align:right}
+.summary-table td:nth-child(2){text-align:right;color:var(--text-muted)}
+.summary-table .bold-row td{font-weight:700;background:#eff6ff}
+
+.info-note{font-size:11px;color:var(--text-muted);padding:8px 12px;background:var(--amber-light);border-radius:var(--radius);margin-top:8px;line-height:1.6;border-left:3px solid #f59e0b}
+.params-section{display:none}
+.params-section.active{display:block}
+.saved-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:8px;background:var(--bg);flex-wrap:wrap}
+.saved-name{flex:1;font-weight:500;font-size:13px;min-width:160px}
+.saved-name small{display:block;color:var(--text-muted);font-weight:400;font-size:11px;margin-top:2px}
+.saved-vals{display:flex;gap:14px;font-size:12px;flex-wrap:wrap}
+.saved-vals b{color:var(--blue)}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;text-transform:uppercase}
+.badge-fcl{background:var(--blue-light);color:#1e40af}
+.badge-lcl{background:var(--green-light);color:var(--green-dark)}
+.badge-air{background:var(--amber-light);color:var(--amber-dark)}
+.empty-state{text-align:center;padding:48px 24px;color:var(--text-muted)}
+.no-data{color:var(--text-light);font-style:italic}
+@media(max-width:640px){.grid3,.grid4{grid-template-columns:1fr 1fr}.res-grid-main{grid-template-columns:1fr 1fr 1fr}.res-grid-secondary{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <h1>🚢 Shipping Cost Calculator</h1>
+      <p>Tính giá EXW → FOB → CNF → CIF theo thời gian thực · FCL / LCL / Air Express / Air Cargo</p>
+    </div>
+    <div style="text-align:right;font-size:11px;opacity:.8">
+      <div id="current-time"></div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('calc',this)">📊 Nhập liệu & Tính toán</button>
+    <button class="tab-btn" onclick="switchTab('saved',this)">💾 Kết quả đã lưu (<span id="saved-count">0</span>)</button>
+  </div>
+
+  <!-- TAB TÍNH TOÁN -->
+  <div id="tab-calc">
+
+    <!-- KẾT QUẢ REAL-TIME — sticky, luôn hiện -->
+    <div class="live-results">
+      <div class="live-badge"><span class="live-dot"></span> LIVE — Cập nhật theo thời gian thực</div>
+      <div class="res-grid-main">
+        <div class="res-card">
+          <div class="res-label">FOB (USD / cái)</div>
+          <div class="res-value" id="res-fob-usd"><span class="no-data">—</span></div>
+          <div class="res-sub" id="res-fob-vnd">Nhập dữ liệu để tính</div>
+        </div>
+        <div class="res-card">
+          <div class="res-label">CNF (USD / cái)</div>
+          <div class="res-value" id="res-cnf-usd"><span class="no-data">—</span></div>
+          <div class="res-sub" id="res-cnf-vnd"></div>
+        </div>
+        <div class="res-card highlight">
+          <div class="res-label">CIF (USD / cái)</div>
+          <div class="res-value" id="res-cif-usd"><span class="no-data">—</span></div>
+          <div class="res-sub" id="res-cif-vnd"></div>
+        </div>
+      </div>
+      <div class="res-grid-secondary">
+        <div class="res-card-sm">
+          <div class="res-label-sm">FOB / kg</div>
+          <div class="res-value-sm" id="res-fob-kg">—</div>
+        </div>
+        <div class="res-card-sm">
+          <div class="res-label-sm">CIF / CBM</div>
+          <div class="res-value-sm" id="res-cif-cbm">—</div>
+        </div>
+        <div class="res-card-sm">
+          <div class="res-label-sm">Tổng EXW lô hàng</div>
+          <div class="res-value-sm" id="res-total-exw">—</div>
+        </div>
+        <div class="res-card-sm highlight">
+          <div class="res-label-sm">Tổng CIF lô hàng</div>
+          <div class="res-value-sm" id="res-total-cif">—</div>
+        </div>
+      </div>
+      <button class="detail-toggle" onclick="toggleDetail(this)">▼ Xem chi tiết breakdown</button>
+      <div class="detail-section" id="detail-section">
+        <div style="margin-top:10px">
+          <table class="summary-table" id="summary-table"></table>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn-primary" onclick="saveResult()" style="font-size:12px;padding:7px 14px">💾 Lưu kết quả</button>
+          <button class="btn-excel" onclick="exportExcel()" style="font-size:12px;padding:7px 12px">📊 Xuất Excel</button>
+          <button class="btn-pdf" onclick="exportPDF()" style="font-size:12px;padding:7px 12px">📄 Xuất PDF</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHƯƠNG THỨC VẬN CHUYỂN -->
+    <div class="section">
+      <div class="section-title">Phương thức vận chuyển — Transport Mode</div>
+      <div class="transport-grid">
+        <button class="transport-btn active" onclick="setTransport('fcl',this)">🚢 FCL<span>Container nguyên</span></button>
+        <button class="transport-btn" onclick="setTransport('lcl',this)">📦 LCL<span>Hàng lẻ theo CBM</span></button>
+        <button class="transport-btn" onclick="setTransport('air_express',this)">✈️ Air Express<span>Hàng không nhanh</span></button>
+        <button class="transport-btn" onclick="setTransport('air_cargo',this)">🛫 Air Cargo<span>Hàng không thường</span></button>
+      </div>
+    </div>
+
+    <!-- THÔNG SỐ CHUNG -->
+    <div class="section">
+      <div class="section-title">Thông số chung — General Parameters</div>
+      <div class="grid4">
+        <div class="field">
+          <label>Tỷ giá USD/VND</label>
+          <input type="number" id="exchange_rate" value="26320" oninput="onAnyChange()">
+        </div>
+        <div class="field">
+          <label>Bảo hiểm (%) — Insurance</label>
+          <input type="number" id="insurance_rate" value="0.15" step="0.01" oninput="onAnyChange()">
+        </div>
+        <div class="field">
+          <label>Thuế xuất khẩu (%) — Export tax</label>
+          <input type="number" id="export_tax" value="0" step="0.1" oninput="onAnyChange()">
+        </div>
+        <div class="field">
+          <label>Tên lô hàng</label>
+          <input type="text" id="shipment_name" value="" placeholder="VD: Đơn tháng 6">
+        </div>
+      </div>
+    </div>
+
+    <!-- PARAMS FCL -->
+    <div class="section params-section active" id="params-fcl">
+      <div class="section-title">Thông số FCL — Container Details</div>
+      <div class="grid3">
+        <div class="field">
+          <label>Loại container</label>
+          <select id="container_type" onchange="onAnyChange()">
+            <option value="20">Container 20ft</option>
+            <option value="40">Container 40ft</option>
+            <option value="40hc">Container 40HC</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Cước biển (USD/cont) — Ocean freight</label>
+          <input type="number" id="ocean_freight_fcl" value="2800" oninput="onAnyChange()">
+        </div>
+        <div class="field">
+          <label>Số cái / container — Qty per cont</label>
+          <input type="number" id="qty_per_cont" value="12000" oninput="onAnyChange()">
+        </div>
+      </div>
+    </div>
+
+    <!-- PARAMS LCL -->
+    <div class="section params-section" id="params-lcl">
+      <div class="section-title">Thông số LCL</div>
+      <div class="grid3">
+        <div class="field">
+          <label>Cước LCL (USD/CBM)</label>
+          <input type="number" id="lcl_rate_cbm" value="35" oninput="onAnyChange()">
+        </div>
+        <div class="field">
+          <label>Cước tối thiểu/lô (USD)</label>
+          <input type="number" id="lcl_min" value="100" oninput="onAnyChange()">
+        </div>
+        <div class="field">
+          <label>Phụ phí cảng đến (USD)</label>
+          <input type="number" id="lcl_dest" value="50" oninput="onAnyChange()">
+        </div>
+      </div>
+      <div class="info-note">Cước = max(CBM × đơn giá, mức tối thiểu) + phụ phí cảng đến.</div>
+    </div>
+
+    <!-- PARAMS AIR EXPRESS -->
+    <div class="section params-section" id="params-air_express">
+      <div class="section-title">Thông số Air Express</div>
+      <div class="grid3">
+        <div class="field">
+          <label>Cước (USD/kg chargeable)</label>
+          <input type="number" id="air_express_rate" value="4.5" step="0.1" oninput="onAnyChange()">
+        </div>
+        <div class="field">
+          <label>Volumetric divisor (cm³/kg)</label>
+          <select id="air_vol_factor" onchange="onAnyChange()">
+            <option value="5000">5000 — IATA standard</option>
+            <option value="6000" selected>6000 — phổ biến</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Phụ phí nhiên liệu (%)</label>
+          <input type="number" id="air_fuel" value="20" oninput="onAnyChange()">
+        </div>
+      </div>
+      <div class="info-note">Chargeable weight = max(KL thực, KL thể tích). Vol.weight = (D×R×C cm³) ÷ divisor.</div>
+    </div>
+
+    <!-- PARAMS AIR CARGO -->
+    <div class="section params-section" id="params-air_cargo">
+      <div class="section-title">Thông số Air Cargo</div>
+      <div class="grid3">
+        <div class="field">
+          <label>Cước (USD/kg chargeable)</label>
+          <input type="number" id="air_cargo_rate" value="2.5" step="0.1" oninput="onAnyChange()">
+        </div>
+        <div class="field">
+          <label>Volumetric divisor (cm³/kg)</label>
+          <select id="air_cargo_vol_factor" onchange="onAnyChange()">
+            <option value="5000">5000 — IATA standard</option>
+            <option value="6000" selected>6000 — phổ biến</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Phụ phí nhiên liệu (%)</label>
+          <input type="number" id="air_cargo_fuel" value="15" oninput="onAnyChange()">
+        </div>
+      </div>
+    </div>
+
+    <!-- BẢNG HÀNG HÓA -->
+    <div class="section">
+      <div class="section-title">Danh sách hàng hóa — Product List</div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th style="min-width:120px">Tên hàng</th>
+              <th style="min-width:50px">ĐVT</th>
+              <th style="min-width:80px">Số lượng</th>
+              <th style="min-width:90px">Giá EXW (USD)</th>
+              <th style="min-width:75px">KL/cái (kg)</th>
+              <th style="min-width:58px">Dài cm</th>
+              <th style="min-width:58px">Rộng cm</th>
+              <th style="min-width:58px">Cao cm</th>
+              <th style="min-width:80px">Tổng CBM</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="product-rows"></tbody>
+          <tfoot>
+            <tr style="background:var(--bg-secondary);font-weight:600;font-size:11px">
+              <td colspan="2" style="padding:6px 8px;color:var(--text-muted)">TỔNG</td>
+              <td style="padding:6px 8px" id="total-qty">—</td>
+              <td style="padding:6px 8px" id="total-exw-value">—</td>
+              <td style="padding:6px 8px" id="total-weight">—</td>
+              <td colspan="3" style="padding:6px 8px;color:var(--text-muted)">Tổng CBM:</td>
+              <td style="padding:6px 8px" id="total-cbm">—</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <button class="btn-add" onclick="addProduct()">＋ Thêm sản phẩm</button>
+    </div>
+
+    <!-- BẢNG CHI PHÍ -->
+    <div class="section">
+      <div class="section-title">Chi phí logistics xuất khẩu — Export Logistics Costs</div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th style="min-width:150px">Hạng mục</th>
+              <th style="min-width:130px">Mô tả</th>
+              <th style="min-width:100px">USD / đơn vị</th>
+              <th style="min-width:120px">VND / đơn vị</th>
+              <th style="min-width:85px">Đơn vị</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="cost-rows"></tbody>
+        </table>
+      </div>
+      <button class="btn-add" onclick="addCostRow()">＋ Thêm chi phí</button>
+      <div class="info-note">Nhập USD → VND tự tính, hoặc nhập VND → USD tự tính theo tỷ giá. Có thể thêm/bớt/sửa tự do.</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-secondary" onclick="resetForm()">↺ Làm lại từ đầu</button>
+      <button class="btn-excel" onclick="exportExcel()">📊 Xuất Excel</button>
+      <button class="btn-pdf" onclick="exportPDF()">📄 Xuất PDF</button>
+    </div>
+
+  </div><!-- end tab-calc -->
+
+  <!-- TAB LƯU KẾT QUẢ -->
+  <div id="tab-saved" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:13px;color:var(--text-muted)">Kết quả đã lưu trong phiên làm việc</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-excel" onclick="exportAllExcel()" style="font-size:12px;padding:7px 12px">📊 Xuất tất cả Excel</button>
+        <button class="btn-secondary" onclick="clearAllSaved()" style="font-size:12px;padding:7px 12px">🗑 Xóa tất cả</button>
+      </div>
+    </div>
+    <div id="saved-list"></div>
+    <div id="saved-empty" class="empty-state">
+      <div style="font-size:40px">📭</div>
+      <p style="margin-top:8px;font-size:13px">Chưa có kết quả nào. Điền đủ thông tin rồi bấm "Lưu kết quả".</p>
+    </div>
+  </div>
+
+</div><!-- end app -->
+
+<!-- XLSX nhúng inline để chạy offline -->
+<script>
+/* ===== XLSX MINI (SheetJS CDN fallback — load online nếu có mạng) ===== */
+(function(){
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onerror=function(){console.warn('XLSX CDN not available — Excel export disabled');window._xlsxFailed=true;};
+  document.head.appendChild(s);
+})();
+</script>
+<script>
+'use strict';
+/* ==================== STATE ==================== */
+let transport = 'fcl';
+let products  = [];
+let costs     = [];
+let saved     = [];
+let lastResult = null;
+
+const transportLabels = {
+  fcl:'FCL — Container nguyên',
+  lcl:'LCL — Hàng lẻ',
+  air_express:'Air Express',
+  air_cargo:'Air Cargo'
+};
+const badgeClass = {fcl:'badge-fcl',lcl:'badge-lcl',air_express:'badge-air',air_cargo:'badge-air'};
+const badgeLabel = {fcl:'FCL',lcl:'LCL',air_express:'Air Express',air_cargo:'Air Cargo'};
+
+const defaultCosts = {
+  fcl:[
+    {name:'THC',             sub:'Phí xếp dỡ tại cảng',          usd:168,  unit:'/cont'},
+    {name:'Seal',            sub:'Phí niêm chì container',        usd:10,   unit:'/cont'},
+    {name:'Bill of Lading',  sub:'Phí phát hành vận đơn',        usd:30,   unit:'/lô'},
+    {name:'LOLO',            sub:'Phí nâng hạ container',         usd:95,   unit:'/cont'},
+    {name:'Phí hạ tầng',    sub:'Phí cảng theo quy định',        usd:20,   unit:'/lô'},
+    {name:'Kiểm hoá',        sub:'Kiểm tra hàng tại cảng',        usd:61,   unit:'/cont'},
+    {name:'Dịch vụ hải quan',sub:'Phí khai báo hải quan',        usd:36.5, unit:'/cont'},
+    {name:'Hun trùng/Phyto', sub:'Kiểm dịch thực vật',           usd:50,   unit:'/cont'},
+    {name:'C/O',             sub:'Chứng nhận xuất xứ',            usd:35,   unit:'/lô'},
+    {name:'Vận tải nội địa', sub:'Kho đi → cảng xuất',           usd:300,  unit:'/cont'},
+  ],
+  lcl:[
+    {name:'Bill of Lading',  sub:'Phí phát hành vận đơn',        usd:40,   unit:'/lô'},
+    {name:'Phí hải quan',    sub:'Khai báo hải quan',             usd:36.5, unit:'/lô'},
+    {name:'C/O',             sub:'Chứng nhận xuất xứ',            usd:35,   unit:'/lô'},
+    {name:'Kiểm hoá',        sub:'Phí kiểm tra hàng',             usd:30,   unit:'/lô'},
+    {name:'Vận tải nội địa', sub:'Kho ra cảng',                   usd:100,  unit:'/lô'},
+    {name:'Phụ phí CFS',    sub:'Đóng gói hàng lẻ tại CFS',     usd:50,   unit:'/lô'},
+  ],
+  air_express:[
+    {name:'Air Waybill (AWB)',      sub:'Vận đơn hàng không',          usd:25,  unit:'/lô'},
+    {name:'Phí hải quan',           sub:'Khai báo xuất khẩu',          usd:30,  unit:'/lô'},
+    {name:'C/O',                    sub:'Chứng nhận xuất xứ',           usd:35,  unit:'/lô'},
+    {name:'Phí handling sân bay',   sub:'Xử lý hàng tại sân bay',      usd:50,  unit:'/lô'},
+    {name:'Vận tải nội địa',        sub:'Kho ra sân bay',               usd:80,  unit:'/lô'},
+  ],
+  air_cargo:[
+    {name:'Air Waybill (AWB)',      sub:'Vận đơn hàng không',           usd:40,   unit:'/lô'},
+    {name:'Phí hải quan',           sub:'Khai báo xuất khẩu',           usd:36.5, unit:'/lô'},
+    {name:'C/O',                    sub:'Chứng nhận xuất xứ',            usd:35,   unit:'/lô'},
+    {name:'Phí handling sân bay',   sub:'Xử lý tại sân bay',            usd:80,   unit:'/lô'},
+    {name:'Vận tải nội địa',        sub:'Kho ra sân bay',                usd:120,  unit:'/lô'},
+    {name:'Kiểm hoá',               sub:'Phí kiểm tra hàng',            usd:40,   unit:'/lô'},
+  ]
+};
+
+/* ==================== TRANSPORT ==================== */
+function setTransport(t, el) {
+  transport = t;
+  document.querySelectorAll('.transport-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.params-section').forEach(s => s.classList.remove('active'));
+  document.getElementById('params-' + t).classList.add('active');
+  costs = defaultCosts[t].map(c => ({...c}));
+  renderCosts();
+  recalc();
+}
+
+/* ==================== PRODUCTS ==================== */
+function addProduct() {
+  products.push({name:'', unit:'Cái', qty:1000, exw:0.5, weight:0.2, d:10, r:10, h:10});
+  renderProducts();
+}
+
+function removeProduct(i) {
+  products.splice(i, 1);
+  renderProducts();
+  recalc();
+}
+
+function renderProducts() {
+  const tb = document.getElementById('product-rows');
+  tb.innerHTML = products.map((p, i) => `
+    <tr>
+      <td><input value="${esc(p.name)}" oninput="products[${i}].name=this.value" placeholder="Tên sản phẩm"></td>
+      <td><input value="${esc(p.unit)}" oninput="products[${i}].unit=this.value" style="width:50px"></td>
+      <td><input type="number" value="${p.qty}"    oninput="products[${i}].qty=+this.value||0;   updateTotals();recalc()"></td>
+      <td><input type="number" value="${p.exw}"    step="0.001" oninput="products[${i}].exw=+this.value||0;   recalc()"></td>
+      <td><input type="number" value="${p.weight}" step="0.001" oninput="products[${i}].weight=+this.value||0; updateTotals();recalc()"></td>
+      <td><input type="number" value="${p.d}"      oninput="products[${i}].d=+this.value||0;     updateRow(${i});recalc()"></td>
+      <td><input type="number" value="${p.r}"      oninput="products[${i}].r=+this.value||0;     updateRow(${i});recalc()"></td>
+      <td><input type="number" value="${p.h}"      oninput="products[${i}].h=+this.value||0;     updateRow(${i});recalc()"></td>
+      <td id="cbm-row-${i}" style="padding:3px 8px;color:var(--text-muted)">${rowCBM(p)}</td>
+      <td><button class="btn-del" onclick="removeProduct(${i})">✕</button></td>
+    </tr>
+  `).join('');
+  updateTotals();
+}
+
+function esc(s){ return String(s).replace(/"/g,'&quot;'); }
+function rowCBM(p){ return ((p.d*p.r*p.h/1000000)*p.qty).toFixed(4); }
+
+function updateRow(i) {
+  const el = document.getElementById('cbm-row-'+i);
+  if(el) el.textContent = rowCBM(products[i]);
+  updateTotals();
+}
+
+function updateTotals() {
+  const qty    = products.reduce((s,p) => s + (p.qty||0), 0);
+  const w      = products.reduce((s,p) => s + (p.qty||0)*(p.weight||0), 0);
+  const cbm    = products.reduce((s,p) => s + (p.qty||0)*(p.d||0)*(p.r||0)*(p.h||0)/1000000, 0);
+  const exwVal = products.reduce((s,p) => s + (p.qty||0)*(p.exw||0), 0);
+  setText('total-qty',       qty.toLocaleString('vi-VN'));
+  setText('total-weight',    w.toFixed(2) + ' kg');
+  setText('total-cbm',       cbm.toFixed(4) + ' CBM');
+  setText('total-exw-value', '$' + exwVal.toFixed(2));
+}
+
+/* ==================== COSTS ==================== */
+function renderCosts() {
+  const exr = getExr();
+  const tb  = document.getElementById('cost-rows');
+  tb.innerHTML = costs.map((c, i) => `
+    <tr>
+      <td><input value="${esc(c.name)}" oninput="costs[${i}].name=this.value" style="font-weight:500"></td>
+      <td><input value="${esc(c.sub)}"  oninput="costs[${i}].sub=this.value"  style="font-size:11px;color:var(--text-muted)" placeholder="Mô tả..."></td>
+      <td><input type="number" id="cusd_${i}" value="${c.usd}" step="0.5"
+            oninput="costs[${i}].usd=+this.value||0; syncVND(${i}); recalc()"></td>
+      <td><input type="number" id="cvnd_${i}" value="${Math.round(c.usd*exr)}"
+            oninput="syncUSD(${i},+this.value||0)"></td>
+      <td>
+        <select onchange="costs[${i}].unit=this.value;recalc()" style="font-size:11px">
+          <option value="/cont" ${c.unit==='/cont'?'selected':''}>/cont</option>
+          <option value="/lô"  ${c.unit==='/lô' ?'selected':''}>/ lô</option>
+          <option value="/kg"  ${c.unit==='/kg' ?'selected':''}>/ kg</option>
+          <option value="/cbm" ${c.unit==='/cbm'?'selected':''}>/ CBM</option>
+        </select>
+      </td>
+      <td><button class="btn-del" onclick="removeCostRow(${i})">✕</button></td>
+    </tr>
+  `).join('');
+}
+
+function addCostRow()      { costs.push({name:'Chi phí khác',sub:'',usd:0,unit:'/lô'}); renderCosts(); }
+function removeCostRow(i)  { costs.splice(i,1); renderCosts(); recalc(); }
+
+function syncVND(i) {
+  const el = document.getElementById('cvnd_'+i);
+  if(el) el.value = Math.round(costs[i].usd * getExr());
+}
+function syncUSD(i, vnd) {
+  const exr = getExr();
+  costs[i].usd = vnd / exr;
+  const el = document.getElementById('cusd_'+i);
+  if(el) el.value = costs[i].usd.toFixed(2);
+  recalc();
+}
+
+function getExr() { return +document.getElementById('exchange_rate').value || 26320; }
+
+/* ==================== CORE CALC ==================== */
+function getTotals() {
+  const exr     = getExr();
+  const insRate = (+document.getElementById('insurance_rate').value || 0) / 100;
+  const taxRate = (+document.getElementById('export_tax').value    || 0) / 100;
+
+  const totalQty    = products.reduce((s,p) => s + (p.qty||0), 0);
+  if (totalQty === 0) return null;
+
+  const totalWeight = products.reduce((s,p) => s + (p.qty||0)*(p.weight||0), 0);
+  const totalCBM    = products.reduce((s,p) => s + (p.qty||0)*(p.d||0)*(p.r||0)*(p.h||0)/1e6, 0);
+  const totalEXW    = products.reduce((s,p) => s + (p.qty||0)*(p.exw||0), 0);
+
+  let logisticsUSD = 0;
+  costs.forEach(c => {
+    const v = c.usd || 0;
+    if      (c.unit === '/kg')  logisticsUSD += v * totalWeight;
+    else if (c.unit === '/cbm') logisticsUSD += v * totalCBM;
+    else                        logisticsUSD += v;
+  });
+
+  let freightUSD = 0;
+  if (transport === 'fcl') {
+    freightUSD = +document.getElementById('ocean_freight_fcl').value || 0;
+  } else if (transport === 'lcl') {
+    const rate = +document.getElementById('lcl_rate_cbm').value || 35;
+    const min  = +document.getElementById('lcl_min').value      || 100;
+    const dest = +document.getElementById('lcl_dest').value     || 0;
+    freightUSD = Math.max(totalCBM * rate, min) + dest;
+  } else if (transport === 'air_express') {
+    const rate = +document.getElementById('air_express_rate').value || 4.5;
+    const vf   = +document.getElementById('air_vol_factor').value   || 6000;
+    const fuel = (+document.getElementById('air_fuel').value        || 0) / 100;
+    const volW = totalCBM * 1e6 / vf;
+    freightUSD = Math.max(totalWeight, volW) * rate * (1 + fuel);
+  } else if (transport === 'air_cargo') {
+    const rate = +document.getElementById('air_cargo_rate').value       || 2.5;
+    const vf   = +document.getElementById('air_cargo_vol_factor').value || 6000;
+    const fuel = (+document.getElementById('air_cargo_fuel').value      || 0) / 100;
+    const volW = totalCBM * 1e6 / vf;
+    freightUSD = Math.max(totalWeight, volW) * rate * (1 + fuel);
+  }
+
+  const exwPU = totalEXW / totalQty;
+  const taxPU = exwPU * taxRate;
+  const logPU = logisticsUSD / totalQty;
+  const fobPU = exwPU + taxPU + logPU;
+  const frPU  = freightUSD / totalQty;
+  const cnfPU = fobPU + frPU;
+  const insPU = cnfPU * insRate;
+  const cifPU = cnfPU + insPU;
+
+  return {
+    totalQty, totalWeight, totalCBM, totalEXW,
+    logisticsUSD, freightUSD,
+    exwPU, taxPU, logPU, fobPU, frPU, cnfPU, insPU, cifPU,
+    exr, insRate, taxRate,
+    shipmentName: document.getElementById('shipment_name').value || '(chưa đặt tên)'
+  };
+}
+
+/* ==================== RENDER RESULTS REAL-TIME ==================== */
+function recalc() {
+  const r = getTotals();
+  if (!r) {
+    // chưa đủ dữ liệu — hiện dấu gạch
+    ['res-fob-usd','res-cnf-usd','res-cif-usd',
+     'res-fob-kg','res-cif-cbm','res-total-exw','res-total-cif'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.innerHTML = '<span class="no-data">—</span>';
+    });
+    setText('res-fob-vnd','Nhập dữ liệu để tính');
+    setText('res-cnf-vnd','');
+    setText('res-cif-vnd','');
+    document.getElementById('summary-table').innerHTML = '';
+    return;
+  }
+  lastResult = r;
+
+  const unit = (products[0] && products[0].unit) || 'cái';
+  const f4   = v => '$' + v.toFixed(4);
+  const fv   = v => Math.round(v * r.exr).toLocaleString('vi-VN') + ' ₫';
+
+  setText('res-fob-usd', f4(r.fobPU));
+  setText('res-fob-vnd', fv(r.fobPU) + ' / ' + unit);
+  setText('res-cnf-usd', f4(r.cnfPU));
+  setText('res-cnf-vnd', fv(r.cnfPU) + ' / ' + unit);
+  setText('res-cif-usd', f4(r.cifPU));
+  setText('res-cif-vnd', fv(r.cifPU) + ' / ' + unit);
+
+  const fobKg  = r.totalWeight > 0 ? r.fobPU * r.totalQty / r.totalWeight : 0;
+  const cifCBM = r.totalCBM   > 0 ? r.cifPU * r.totalQty / r.totalCBM   : 0;
+  setText('res-fob-kg',     '$' + fobKg.toFixed(4) + '/kg');
+  setText('res-cif-cbm',    '$' + cifCBM.toFixed(2) + '/CBM');
+  setText('res-total-exw',  '$' + r.totalEXW.toFixed(2));
+  setText('res-total-cif',  '$' + (r.cifPU * r.totalQty).toFixed(2));
+
+  const rows = [
+    ['Giá EXW / ' + unit,                            r.exwPU, false],
+    ['Thuế xuất khẩu (' + (r.taxRate*100).toFixed(1)+'%)', r.taxPU, false],
+    ['Phí logistics (phân bổ / ' + unit + ')',        r.logPU, false],
+    ['Giá FOB',                                        r.fobPU, true],
+    ['Cước vận chuyển (phân bổ / ' + unit + ')',      r.frPU,  false],
+    ['Giá CNF',                                        r.cnfPU, true],
+    ['Bảo hiểm (' + (r.insRate*100).toFixed(2) + '%)', r.insPU, false],
+    ['Giá CIF',                                        r.cifPU, true],
+  ];
+  document.getElementById('summary-table').innerHTML =
+    '<thead><tr>' +
+      '<th>Hạng mục</th>' +
+      '<th style="text-align:right">USD / '+unit+'</th>' +
+      '<th style="text-align:right">VND / '+unit+'</th>' +
+    '</tr></thead><tbody>' +
+    rows.map(([label, val, bold]) =>
+      `<tr class="${bold?'bold-row':''}">
+        <td>${label}</td>
+        <td style="text-align:right">${f4(val)}</td>
+        <td style="text-align:right">${fv(val)}</td>
+      </tr>`
+    ).join('') + '</tbody>';
+}
+
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if(el) el.textContent = text;
+}
+
+function onAnyChange() { renderCosts(); recalc(); }
+
+/* ==================== DETAIL TOGGLE ==================== */
+function toggleDetail(btn) {
+  const sec = document.getElementById('detail-section');
+  const open = sec.classList.toggle('open');
+  btn.textContent = open ? '▲ Ẩn chi tiết' : '▼ Xem chi tiết breakdown';
+}
+
+/* ==================== SAVE ==================== */
+function saveResult() {
+  if (!lastResult) { alert('Chưa có kết quả để lưu. Hãy điền đủ thông tin!'); return; }
+  const name = prompt('Đặt tên cho kết quả này:') || 'Kết quả ' + (saved.length + 1);
+  saved.unshift({
+    name, transport,
+    products: products.map(p => ({...p})),
+    costs:    costs.map(c => ({...c})),
+    r: {...lastResult},
+    ts: new Date().toLocaleString('vi-VN')
+  });
+  document.getElementById('saved-count').textContent = saved.length;
+  alert('✅ Đã lưu: ' + name);
+}
+
+function renderSaved() {
+  const el    = document.getElementById('saved-list');
+  const empty = document.getElementById('saved-empty');
+  if (saved.length === 0) { empty.style.display=''; el.innerHTML=''; return; }
+  empty.style.display = 'none';
+  el.innerHTML = saved.map((s, i) => `
+    <div class="saved-item">
+      <span class="badge ${badgeClass[s.transport]}">${badgeLabel[s.transport]}</span>
+      <div class="saved-name">${esc(s.name)}
+        <small>${s.ts} · ${s.products.length} sản phẩm · ${s.r.totalQty.toLocaleString()} ${(s.products[0]&&s.products[0].unit)||'cái'}</small>
+      </div>
+      <div class="saved-vals">
+        <span>FOB: <b>$${s.r.fobPU.toFixed(4)}</b></span>
+        <span>CNF: <b>$${s.r.cnfPU.toFixed(4)}</b></span>
+        <span>CIF: <b>$${s.r.cifPU.toFixed(4)}</b></span>
+      </div>
+      <button class="btn-excel" onclick="exportExcelSaved(${i})" style="font-size:11px;padding:5px 10px">📊 Excel</button>
+      <button class="btn-del"   onclick="deleteSaved(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function deleteSaved(i)  { saved.splice(i,1); document.getElementById('saved-count').textContent=saved.length; renderSaved(); }
+function clearAllSaved() { if(confirm('Xóa tất cả kết quả đã lưu?')){ saved=[]; document.getElementById('saved-count').textContent=0; renderSaved(); } }
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-calc').style.display  = tab==='calc'  ? '' : 'none';
+  document.getElementById('tab-saved').style.display = tab==='saved' ? '' : 'none';
+  if (tab==='saved') renderSaved();
+}
+
+function resetForm() {
+  if (!confirm('Làm lại từ đầu? Dữ liệu hiện tại sẽ mất.')) return;
+  products = [{name:'Sản phẩm 1', unit:'Cái', qty:12000, exw:0.7, weight:0.2, d:10, r:10, h:10}];
+  costs    = defaultCosts[transport].map(c => ({...c}));
+  document.getElementById('shipment_name').value = '';
+  renderProducts(); renderCosts(); recalc();
+}
+
+/* ==================== EXCEL EXPORT ==================== */
+function buildExcelData(s_obj) {
+  if (window._xlsxFailed || typeof XLSX === 'undefined') {
+    alert('Thư viện Excel chưa tải xong. Vui lòng kết nối internet lần đầu hoặc thử lại sau giây lát!');
+    return null;
+  }
+  const r     = s_obj ? s_obj.r     : lastResult;
+  const prods = s_obj ? s_obj.products : products;
+  const cs    = s_obj ? s_obj.costs    : costs;
+  const tr    = s_obj ? s_obj.transport: transport;
+  const unit  = (prods[0] && prods[0].unit) || 'cái';
+  const f4    = v => +v.toFixed(4);
+  const wb    = XLSX.utils.book_new();
+
+  const summary = [
+    ['SHIPPING COST CALCULATOR — KẾT QUẢ TÍNH GIÁ'],[''],
+    ['Tên lô hàng',    r.shipmentName],
+    ['Phương thức',    transportLabels[tr]],
+    ['Ngày tính',      new Date().toLocaleString('vi-VN')],
+    ['Tỷ giá USD/VND', r.exr],[''],
+    ['THÔNG SỐ TỔNG'],
+    ['Tổng số lượng',          r.totalQty],
+    ['Tổng khối lượng (kg)',   +r.totalWeight.toFixed(2)],
+    ['Tổng thể tích (CBM)',    +r.totalCBM.toFixed(4)],
+    ['Tổng giá trị EXW (USD)', +r.totalEXW.toFixed(2)],
+    ['Tổng cước vận chuyển (USD)', +r.freightUSD.toFixed(2)],[''],
+    ['KẾT QUẢ', 'USD / '+unit, 'VND / '+unit],
+    ['Giá EXW',                  f4(r.exwPU), Math.round(r.exwPU*r.exr)],
+    ['Thuế xuất khẩu',           f4(r.taxPU), Math.round(r.taxPU*r.exr)],
+    ['Phí logistics (phân bổ)',  f4(r.logPU), Math.round(r.logPU*r.exr)],
+    ['Giá FOB ★',                f4(r.fobPU), Math.round(r.fobPU*r.exr)],
+    ['Cước vận chuyển (phân bổ)',f4(r.frPU),  Math.round(r.frPU *r.exr)],
+    ['Giá CNF ★',                f4(r.cnfPU), Math.round(r.cnfPU*r.exr)],
+    ['Bảo hiểm',                 f4(r.insPU), Math.round(r.insPU*r.exr)],
+    ['Giá CIF ★',                f4(r.cifPU), Math.round(r.cifPU*r.exr)],[''],
+    ['ĐƠN VỊ KHÁC'],
+    ['FOB (USD/kg)',  +(r.totalWeight>0?r.fobPU*r.totalQty/r.totalWeight:0).toFixed(4)],
+    ['CIF (USD/CBM)', +(r.totalCBM>0?r.cifPU*r.totalQty/r.totalCBM:0).toFixed(2)],
+    ['Tổng lô CIF (USD)', +(r.cifPU*r.totalQty).toFixed(2)],
+  ];
+  const ws1 = XLSX.utils.aoa_to_sheet(summary);
+  ws1['!cols'] = [{wch:35},{wch:18},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Kết quả');
+
+  const prodData = [['Tên hàng','ĐVT','Số lượng','Giá EXW (USD)','KL/cái (kg)','Tổng KL (kg)','Dài (cm)','Rộng (cm)','Cao (cm)','CBM/cái','Tổng CBM','Tổng EXW (USD)']];
+  prods.forEach(p => {
+    const cbmPer = (p.d||0)*(p.r||0)*(p.h||0)/1e6;
+    prodData.push([p.name,p.unit,p.qty,p.exw,p.weight,+(p.qty*p.weight).toFixed(2),p.d,p.r,p.h,+cbmPer.toFixed(6),+(p.qty*cbmPer).toFixed(4),+(p.qty*p.exw).toFixed(2)]);
+  });
+  prodData.push(['TỔNG','',prods.reduce((s,p)=>s+p.qty,0),'','',+r.totalWeight.toFixed(2),'','','','',+r.totalCBM.toFixed(4),+r.totalEXW.toFixed(2)]);
+  const ws2 = XLSX.utils.aoa_to_sheet(prodData);
+  ws2['!cols'] = Array(12).fill({wch:14});
+  XLSX.utils.book_append_sheet(wb, ws2, 'Hàng hóa');
+
+  const costData = [['Hạng mục','Mô tả','USD/đơn vị','VND/đơn vị','Đơn vị']];
+  cs.forEach(c => costData.push([c.name, c.sub, c.usd, Math.round(c.usd*r.exr), c.unit]));
+  costData.push(['TỔNG LOGISTICS (USD)','','',+r.logisticsUSD.toFixed(2),'']);
+  const ws3 = XLSX.utils.aoa_to_sheet(costData);
+  ws3['!cols'] = [{wch:25},{wch:30},{wch:15},{wch:18},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Chi phí logistics');
+
+  return wb;
+}
+
+function exportExcel() {
+  if (!lastResult) { alert('Hãy điền đủ thông tin để có kết quả!'); return; }
+  const wb = buildExcelData(null);
+  if (!wb) return;
+  const name = (lastResult.shipmentName||'shipping').replace(/[^\w\s\u00C0-\u1EFF]/g,'').trim();
+  XLSX.writeFile(wb, 'ShippingCalc_' + name + '_' + Date.now() + '.xlsx');
+}
+
+function exportExcelSaved(i) {
+  const wb = buildExcelData(saved[i]);
+  if (!wb) return;
+  const name = (saved[i].name||'shipping').replace(/[^\w\s\u00C0-\u1EFF]/g,'').trim();
+  XLSX.writeFile(wb, 'ShippingCalc_' + name + '.xlsx');
+}
+
+function exportAllExcel() {
+  if (saved.length === 0) { alert('Chưa có kết quả nào!'); return; }
+  if (window._xlsxFailed || typeof XLSX === 'undefined') { alert('Thư viện Excel chưa tải!'); return; }
+  const wb = XLSX.utils.book_new();
+  const allRows = [['Tên lô','Phương thức','Ngày','Số lượng','EXW','FOB','CNF','CIF (USD)','CIF (VND)','Tổng CBM','Tổng KL','Tổng CIF (USD)']];
+  saved.forEach(s => {
+    allRows.push([s.name, transportLabels[s.transport], s.ts, s.r.totalQty,
+      +s.r.exwPU.toFixed(4), +s.r.fobPU.toFixed(4), +s.r.cnfPU.toFixed(4), +s.r.cifPU.toFixed(4),
+      Math.round(s.r.cifPU*s.r.exr), +s.r.totalCBM.toFixed(4), +s.r.totalWeight.toFixed(2),
+      +(s.r.cifPU*s.r.totalQty).toFixed(2)]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(allRows);
+  ws['!cols'] = Array(12).fill({wch:16});
+  XLSX.utils.book_append_sheet(wb, ws, 'Tổng hợp so sánh');
+  saved.forEach((s, i) => {
+    const sname = ('KQ'+(i+1)).substring(0,10);
+    const wbTmp = buildExcelData(s);
+    if (!wbTmp) return;
+    ['Kết quả','Hàng hóa','Chi phí logistics'].forEach(sn => {
+      if (wbTmp.Sheets[sn]) {
+        const nn = (sname+'_'+sn).substring(0,31);
+        wb.Sheets[nn] = wbTmp.Sheets[sn];
+        wb.SheetNames.push(nn);
+      }
+    });
+  });
+  XLSX.writeFile(wb, 'ShippingCalc_TatCa_' + Date.now() + '.xlsx');
+}
+
+/* ==================== PDF EXPORT ==================== */
+function exportPDF() {
+  if (!lastResult) { alert('Hãy điền đủ thông tin để có kết quả!'); return; }
+  const r    = lastResult;
+  const unit = (products[0] && products[0].unit) || 'cái';
+  const f4   = v => '$' + v.toFixed(4);
+  const fv   = v => Math.round(v*r.exr).toLocaleString('vi-VN') + ' ₫';
+
+  const prodRows = products.map(p =>
+    `<tr><td>${p.name}</td><td>${p.unit}</td><td>${(p.qty||0).toLocaleString()}</td>
+     <td>$${p.exw}</td><td>${p.weight} kg</td>
+     <td>${((p.d||0)*(p.r||0)*(p.h||0)/1e6*(p.qty||0)).toFixed(4)}</td></tr>`
+  ).join('');
+
+  const costRows = costs.map(c =>
+    `<tr><td>${c.name}</td><td>${c.sub}</td><td>$${c.usd}</td><td>${c.unit}</td></tr>`
+  ).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Shipping Cost — ${r.shipmentName}</title>
+  <style>
+    body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;margin:20px;color:#111}
+    h1{font-size:17px;color:#1a56db;border-bottom:2px solid #1a56db;padding-bottom:6px;margin-bottom:14px}
+    h2{font-size:12px;color:#374151;margin:14px 0 6px;border-left:3px solid #1a56db;padding-left:7px}
+    .meta{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px}
+    .meta-item{background:#f3f4f6;padding:7px;border-radius:5px}
+    .meta-item b{display:block;color:#6b7280;font-size:10px;margin-bottom:1px}
+    table{width:100%;border-collapse:collapse;margin-bottom:10px}
+    th{background:#1a56db;color:#fff;padding:6px 7px;text-align:left;font-weight:500;font-size:11px}
+    td{padding:5px 7px;border-bottom:1px solid #e5e7eb;font-size:11px}
+    .bold{background:#eff6ff;font-weight:700}
+    .rg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin:10px 0}
+    .rc{border:1px solid #e5e7eb;border-radius:5px;padding:9px;text-align:center}
+    .rc.hi{border-color:#1a56db;background:#eff6ff}
+    .rl{font-size:10px;color:#6b7280;margin-bottom:3px}
+    .rv{font-size:17px;font-weight:700;color:#1a56db}
+    .rs{font-size:10px;color:#6b7280}
+    .foot{margin-top:16px;font-size:10px;color:#9ca3af;text-align:center;border-top:1px solid #e5e7eb;padding-top:7px}
+  </style></head><body>
+  <h1>🚢 Shipping Cost Calculator — Kết quả tính giá</h1>
+  <div class="meta">
+    <div class="meta-item"><b>Lô hàng</b>${r.shipmentName}</div>
+    <div class="meta-item"><b>Phương thức</b>${transportLabels[transport]}</div>
+    <div class="meta-item"><b>Ngày tính</b>${new Date().toLocaleString('vi-VN')}</div>
+    <div class="meta-item"><b>Tổng số lượng</b>${r.totalQty.toLocaleString()} ${unit}</div>
+    <div class="meta-item"><b>Tổng khối lượng</b>${r.totalWeight.toFixed(2)} kg</div>
+    <div class="meta-item"><b>Tổng thể tích</b>${r.totalCBM.toFixed(4)} CBM</div>
+    <div class="meta-item"><b>Tỷ giá USD/VND</b>${r.exr.toLocaleString()}</div>
+    <div class="meta-item"><b>Tổng EXW</b>$${r.totalEXW.toFixed(2)}</div>
+    <div class="meta-item"><b>Tổng CIF</b>$${(r.cifPU*r.totalQty).toFixed(2)}</div>
+  </div>
+  <div class="rg">
+    <div class="rc"><div class="rl">FOB / ${unit}</div><div class="rv">${f4(r.fobPU)}</div><div class="rs">${fv(r.fobPU)}</div></div>
+    <div class="rc"><div class="rl">CNF / ${unit}</div><div class="rv">${f4(r.cnfPU)}</div><div class="rs">${fv(r.cnfPU)}</div></div>
+    <div class="rc hi"><div class="rl">CIF / ${unit}</div><div class="rv">${f4(r.cifPU)}</div><div class="rs">${fv(r.cifPU)}</div></div>
+  </div>
+  <h2>Chi tiết tính giá</h2>
+  <table><thead><tr><th>Hạng mục</th><th>USD / ${unit}</th><th>VND / ${unit}</th></tr></thead><tbody>
+  ${[
+    ['Giá EXW',           r.exwPU, false],
+    ['Thuế xuất khẩu',    r.taxPU, false],
+    ['Phí logistics (pb)',r.logPU, false],
+    ['Giá FOB',           r.fobPU, true],
+    ['Cước vận chuyển',   r.frPU,  false],
+    ['Giá CNF',           r.cnfPU, true],
+    ['Bảo hiểm',          r.insPU, false],
+    ['Giá CIF',           r.cifPU, true],
+  ].map(([l,v,b])=>`<tr class="${b?'bold':''}"><td>${l}</td><td>${f4(v)}</td><td>${fv(v)}</td></tr>`).join('')}
+  </tbody></table>
+  <h2>Danh sách hàng hóa</h2>
+  <table><thead><tr><th>Tên hàng</th><th>ĐVT</th><th>Số lượng</th><th>EXW</th><th>KL/cái</th><th>Tổng CBM</th></tr></thead>
+  <tbody>${prodRows}</tbody></table>
+  <h2>Chi phí logistics</h2>
+  <table><thead><tr><th>Hạng mục</th><th>Mô tả</th><th>USD</th><th>Đơn vị</th></tr></thead>
+  <tbody>${costRows}</tbody></table>
+  <div class="foot">Tạo bởi Shipping Cost Calculator · ${new Date().toLocaleString('vi-VN')} · Số liệu chỉ mang tính tham khảo.</div>
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { alert('Trình duyệt chặn popup! Vui lòng cho phép popup để xuất PDF.'); return; }
+  w.document.write(html);
+  w.document.close();
+}
+
+/* ==================== INIT ==================== */
+function updateTime() {
+  const el = document.getElementById('current-time');
+  if(el) el.textContent = new Date().toLocaleString('vi-VN');
+}
+updateTime();
+setInterval(updateTime, 1000);
+
+// Dữ liệu mặc định để demo ngay
+products = [{name:'Sản phẩm 1', unit:'Cái', qty:12000, exw:0.7, weight:0.2, d:10, r:10, h:10}];
+costs    = defaultCosts.fcl.map(c => ({...c}));
+renderProducts();
+renderCosts();
+recalc(); // tính ngay khi load
+</script>
+</body>
+</html>

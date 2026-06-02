@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pricing Lab — Export Cost Calculator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #0f0f0f;
+  --bg2: #181818;
+  --bg3: #222;
+  --bg4: #2a2a2a;
+  --border: #333;
+  --border2: #444;
+  --text: #f0f0f0;
+  --text2: #aaa;
+  --text3: #666;
+  --accent: #7C5CFC;
+  --accent2: #9B7FFF;
+  --green: #22c55e;
+  --yellow: #f59e0b;
+  --red: #ef4444;
+  --blue: #3b82f6;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; min-height: 100vh; }
+::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: var(--bg2); } ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* LAYOUT */
+.layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.sidebar { background: var(--bg2); border-right: 1px solid var(--border); padding: 0; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.sidebar-logo { padding: 20px 16px 16px; border-bottom: 1px solid var(--border); }
+.sidebar-logo h1 { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -.3px; }
+.sidebar-logo p { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.sidebar-nav { padding: 12px 8px; flex: 1; }
+.nav-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; padding: 0 8px; margin: 12px 0 4px; }
+.nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer; color: var(--text2); font-size: 12px; font-weight: 500; transition: all .15s; border: none; background: none; width: 100%; text-align: left; }
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: rgba(124,92,252,.15); color: var(--accent2); }
+.nav-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+.nav-badge { margin-left: auto; background: var(--accent); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 999px; }
+.main { overflow-y: auto; padding: 24px 28px; }
+
+/* HEADER */
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.page-title { font-size: 20px; font-weight: 700; }
+.page-title span { color: var(--accent2); }
+.header-actions { display: flex; gap: 8px; }
+
+/* MODE SWITCHER */
+.mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+.mode-card { padding: 14px 16px; border: 1.5px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: all .2s; background: var(--bg2); }
+.mode-card:hover { border-color: var(--border2); }
+.mode-card.active { border-color: var(--accent); background: rgba(124,92,252,.08); }
+.mode-card-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.mode-card-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
+/* SECTIONS */
+.section { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; }
+.section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--text2); }
+.section-badge { font-size: 10px; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+.badge-required { background: rgba(239,68,68,.15); color: var(--red); }
+.badge-optional { background: rgba(107,114,128,.15); color: var(--text3); }
+
+/* GRID */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.g4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+
+/* FIELDS */
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 11px; color: var(--text2); font-weight: 500; }
+.field input, .field select, .field textarea {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text); padding: 7px 10px; font-size: 12px; outline: none; transition: border .15s; font-family: inherit;
+}
+.field input:focus, .field select:focus { border-color: var(--accent); }
+.field .hint { font-size: 10px; color: var(--text3); font-style: italic; margin-top: 2px; }
+select option { background: var(--bg3); }
+
+/* COGS TABLE */
+.cogs-header { display: grid; grid-template-columns: 2fr 80px 120px 90px 60px 28px; gap: 6px; padding: 0 0 6px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+.cogs-header span { font-size: 10px; color: var(--text3); font-weight: 600; text-transform: uppercase; }
+.cogs-row { display: grid; grid-template-columns: 2fr 80px 120px 90px 60px 28px; gap: 6px; align-items: center; margin-bottom: 6px; }
+.cogs-row input, .cogs-row select { width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); padding: 6px 8px; font-size: 12px; outline: none; }
+.cogs-row input:focus, .cogs-row select:focus { border-color: var(--accent); }
+.del-btn { background: transparent; border: none; cursor: pointer; color: var(--text3); padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+.del-btn:hover { color: var(--red); background: rgba(239,68,68,.1); }
+.add-row-btn { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text3); cursor: pointer; padding: 6px 0; background: none; border: none; margin-top: 4px; }
+.add-row-btn:hover { color: var(--accent2); }
+
+/* INCOTERM */
+.incoterm-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.term-btn { padding: 6px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: transparent; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text2); transition: all .15s; }
+.term-btn:hover { border-color: var(--border2); color: var(--text); }
+.term-btn.active { background: rgba(124,92,252,.15); border-color: var(--accent); color: var(--accent2); }
+.term-btn.risky.active { background: rgba(239,68,68,.1); border-color: var(--red); color: var(--red); }
+.incoterm-desc { font-size: 11px; color: var(--text3); background: var(--bg3); padding: 8px 12px; border-radius: var(--radius-sm); line-height: 1.6; }
+.incoterm-risk { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.risk-tag { font-size: 10px; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+
+/* RESULTS */
+.results-panel { background: linear-gradient(135deg, rgba(124,92,252,.08) 0%, var(--bg2) 100%); border: 1px solid var(--accent); border-radius: var(--radius); padding: 20px; margin-bottom: 14px; }
+.metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+.metric-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
+.metric-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.metric-value { font-size: 22px; font-weight: 700; line-height: 1; }
+.metric-sub { font-size: 10px; color: var(--text3); margin-top: 3px; }
+.green { color: var(--green); }
+.yellow { color: var(--yellow); }
+.red { color: var(--red); }
+.accent { color: var(--accent2); }
+
+/* BREAKDOWN */
+.breakdown { border-top: 1px solid var(--border); padding-top: 14px; }
+.breakdown-title { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; margin-bottom: 8px; }
+.brow { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; color: var(--text2); }
+.brow.indent { padding-left: 12px; }
+.brow.subtotal { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 8px; color: var(--text); font-weight: 600; }
+.brow.profit { color: var(--green); font-weight: 700; font-size: 13px; }
+.brow.loss { color: var(--red); font-weight: 700; font-size: 13px; }
+
+/* SENSITIVITY */
+.sens-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--bg3); border-radius: var(--radius-sm); margin-bottom: 4px; font-size: 12px; }
+
+/* AI */
+.ai-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; }
+.ai-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.score-ring { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; border: 3px solid; flex-shrink: 0; }
+.ai-verdict-text { font-size: 16px; font-weight: 700; }
+.ai-verdict-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.ai-items { display: flex; flex-direction: column; gap: 8px; }
+.ai-item { display: flex; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); font-size: 12px; line-height: 1.6; }
+.ai-item.good { background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.2); }
+.ai-item.warn { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.2); }
+.ai-item.bad { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); }
+.ai-item.info { background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.2); }
+.ai-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+.market-hint { margin-top: 12px; padding: 12px; background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.2); border-radius: var(--radius-sm); font-size: 11px; color: var(--text2); line-height: 1.7; }
+.market-hint strong { color: var(--blue); }
+
+/* SAVED */
+.saved-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; }
+.saved-name { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+.saved-meta { font-size: 11px; color: var(--text3); }
+.saved-actions { display: flex; gap: 6px; }
+
+/* COMPARE TABLE */
+.compare-wrap { overflow-x: auto; }
+table.compare { width: 100%; border-collapse: collapse; font-size: 12px; }
+table.compare th { text-align: left; padding: 8px 12px; color: var(--text2); font-size: 11px; text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; }
+table.compare td { padding: 8px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+table.compare tr:hover td { background: var(--bg3); }
+table.compare .row-label { color: var(--text3); }
+
+/* BUTTONS */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: transparent; color: var(--text); cursor: pointer; font-size: 12px; font-weight: 500; transition: all .15s; font-family: inherit; }
+.btn:hover { border-color: var(--border2); background: var(--bg3); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+.btn.danger { background: rgba(239,68,68,.1); border-color: rgba(239,68,68,.3); color: var(--red); }
+.btn.sm { padding: 5px 10px; font-size: 11px; }
+
+/* ACTION BAR */
+.action-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+.action-bar input[type="text"] { flex: 1; min-width: 200px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); padding: 8px 12px; font-size: 12px; outline: none; }
+.action-bar input:focus { border-color: var(--accent); }
+
+/* FX BAR */
+.fx-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(124,92,252,.06); border: 1px solid rgba(124,92,252,.2); border-radius: var(--radius-sm); margin-bottom: 14px; font-size: 12px; }
+.fx-bar label { color: var(--text3); }
+.fx-bar input { background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; color: var(--text); padding: 4px 8px; font-size: 12px; width: 100px; outline: none; }
+.fx-live { font-size: 10px; color: var(--text3); margin-left: auto; }
+
+/* TOAST */
+.toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; border-radius: var(--radius-sm); font-size: 12px; opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 9999; max-width: 320px; }
+.toast.show { opacity: 1; }
+.toast.success { border-color: rgba(34,197,94,.4); }
+.toast.error { border-color: rgba(239,68,68,.4); }
+
+/* PAGE */
+.page { display: none; }
+.page.active { display: block; }
+
+/* EMPTY STATE */
+.empty { text-align: center; padding: 3rem 1rem; color: var(--text3); }
+.empty svg { width: 40px; height: 40px; margin: 0 auto 12px; opacity: .3; display: block; }
+.empty p { font-size: 13px; }
+
+/* PRODUCT TABLE */
+.prod-table-header { display: grid; grid-template-columns: 2.5fr 90px 110px 130px 110px 28px; gap: 6px; padding: 0 0 6px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+.prod-table-header span { font-size: 10px; color: var(--text3); font-weight: 600; text-transform: uppercase; }
+.prod-row { display: grid; grid-template-columns: 2.5fr 90px 110px 130px 110px 28px; gap: 6px; align-items: center; margin-bottom: 6px; }
+.prod-row input, .prod-row select { width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); padding: 6px 8px; font-size: 12px; outline: none; }
+.prod-row input:focus, .prod-row select:focus { border-color: var(--accent); }
+.prod-row-total { font-size: 12px; color: var(--accent2); font-weight: 600; padding: 6px 4px; }
+
+/* PRINT */
+@media print {
+  .sidebar, .action-bar, .btn, .nav-item, .mode-switch { display: none !important; }
+  .layout { display: block; }
+  .main { padding: 0; }
+  body { background: #fff; color: #000; }
+  .section, .ai-panel, .results-panel { border: 1px solid #ddd; background: #fff; margin-bottom: 10px; }
+}
+
+@media (max-width: 768px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .g2, .g3, .g4 { grid-template-columns: 1fr; }
+  .metrics-grid { grid-template-columns: 1fr 1fr; }
+  .cogs-header, .cogs-row { grid-template-columns: 2fr 70px 100px 80px 50px 24px; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAD+AQ4DASIAAhEBAxEB/8QAHQABAAICAwEBAAAAAAAAAAAAAAcIBQYBAgQDCf/EAEIQAAEDBAAEBAMEBwYFBQEAAAEAAgMEBQYRBxIhMQgTQVEiYXEUgZGxFSMyQqHB0RYkQ1Ji4TRystLxFyUzU3ST/8QAGwEBAAIDAQEAAAAAAAAAAAAAAAECAwUGBwT/xAAtEQACAQMDAwMEAgIDAAAAAAAAAQIDBBEFITESE0EGFHEiUYGxMtFSYZHw8f/aAAwDAQACEQMRAD8At2iIsRcIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiLq57W9yPvKA7b+RTa81RXUcI3LVxR/V4C8r7/Y2/tXSk/8A6hAZNFi2ZFYnHTbtR79vNC9dPcKGo6w1cEg/0vBQHpRdQ9juz2n6FdkAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEPZdZHtja573BrGjZcewCiDipx5xrEA+lontuVcB+xGfhafmVIJZrKylo4jNVTxwsHq92lGGdcc8Mxl74m1X22do6Mi6glVzqb7xQ4w3mRtB9qioSSDy/BEwfP3Wbt/CnD8ZqY6zM7+LpcD1FvpC6Rzj89KyS8g2W8+JG93U/ZcTx2cyv6B72cw2sO53HXJGmaatdbonnfWby9D6KQ8aor3URthxPDKaxwO6Cqq2NLtfTqVs8HCuasPmX/Iq+qe47cyORzWD6AEK2UgQjHwuym4v5r7xDjbv9pjqlxXok4K2Vo3NnjT/AMjn/wBFYG2cL8Rotf3F07v80shef4rNw4pj0Q0y1Uv3xgp1onJV1vBnHOYludvB9Nhy6TcMbxQgOx/iS3Y7M85zFaWXE8clBD7PRnff9UP6LE1vDTDqkfFaY2H3YeX8k60MldaWh422GMz0F6/STW9TqfnJA+pWTtnHzNMYkbBmFimnj7F/Joj7x3UtVfCC2NcZLTeLjQO30DZnFv4ErA3zGMrstK+KtoKTLLcW/EyVgErfoSP5qMpg9mH8f8Lvj2QVMz6CZ5AHmDopTtt0t9whbLR1kU7HDYLXbVQr9gOEX2rdHTSVOJ3dzukFYxwY53ycNgLCT27ilworGVsM9TWW2M7a+B/mxOH8k6UQXlG0UEcKPERYsiMNvv7Rba92m7J+An6+inKnqIaiFs0ErZI3DYLTsEKjTQPquHdHAklcrAcQsgixfD7pfJtctJSySAb7kNJA/FQDTOM/GC04FEyjpoH3W9TdIqSDq4exKj23V3iLzOJtwp/0djtM/rGyRu36+egvv4Z8JORum4oZU11TX19Q99I2UbDI+gHTt6LH5Bx6z88RrtiOI4dBdpKB5byslDXcoHzIViD2V03iLxCN9bNPbsjp4+r42t07Xy2FvXBrjLa86c+211LLaL5CeWSlnGubXcha9wx47Vt7zePDMxxiSw3iRgLWc/Mwntre+qx/ifwb9DUjOJ+Kg0l2tUrZakRdPMiG9/D2/wDKAsMNFx+XRdlq/CzKYMzwS05HCOX7ZTte9nfkdobb9xW0KpIREQBERAEREAREPQIAsZkV9tlgtstfdKqOnijaTtztb+SxPEjMrbhWM1F2r54+dg/VROdovd7BVNmr8046ZLO8yvobNCC6Vw22KNg9evdWUcgzPE3jVk2cXOTHsNp6iGmc4x+ZF+1J947BY/EOEFFRS/pLPK98lQfjbRRuLpHn26LfuE+OQU8U9owOh5nNJjqL5VRktLtdfL30/BS3hXDm12KQ1tbLNdLg/q+oqHc2ie/KPQKzaROTSbJjWR3+jZbbTE3FbBH01E3lmlHuVv2JcOMaxzU1NRtnrfWqnHmSH73b0tva0NGmgAenRdlTJB1awNBAC5aCO52FyigDqiIgCIiAIRtEQGHyHGbJkFM6nu1upqgO/eLBzj6O7hR5cuHt6sDHuxuvNdbiCHW2scXt17An+qltCpTwCoGfcJLReXOrLQHWK7k8z6Ob4Wud/oPb+K8OF8R874UXKOz5PTVNTby7u8c2m+7SrZ5LjVrv1M6KupwXa02RvRzfmCom4iYJU0mPS0lzikv9r7tdy/3mAfJw7hXUk9mRglDBMysmY2iO4WmqZICBzR8w5mnXYjutE8XhnPAy8iBp5uaLbh6N8wb+7SrzUU994UT0+TYtXVFXap3gvbonl92v9iOynbDs6sPHHBbpi9S00dfLSlkkT3epGg5vv1UOONyTeuC7YY+FePtpSDEKJvLr7/57VRjlWTYf4i8zueK2Vl5q2FzZI3A6Zob30791MXBPO6rBbx/6UZuwU8tKS231rzytmj3sdT09wttwXhEywcWL3nZu0VZDdWkmnLejQRpRwQyG+A8F64wcYo+JF7moaJ9r5Gikh2CS0k9u/r6qy/FiOnfw6vraoN8o0Tw/fUaWg2LgzLivE2XLcXvjbfb6kh1VQPbtrhsk69lguOXEGfLbhJwpwhgrK25M8usq49uZTM2N9R03+SAy3gh8w8BaHzC86ragN5u/KH9FOC1jhfiVPhGFUGOU0vnNpYwHSa1zu9XfetnUMkIiKAEREAREQBY3JLzQ2GzVFzuE7IYIWkkucBv5LISODRzE6aOpPyVQvFHxAqcnyKPDLFL5kLJSyQRHfO/elaKywapmWQ3zjRxHbSU/mRWlk2mj92OMfvH7vzUzY/YXVTabC8La6lscJAuly5fimI7sB+Z6LE4TidPidqt+I00TJchvDGyVrwPip49bI+SsNjllorFa4qCjjYxjGgdB3PurSeAfWwWuis9sioKCnZTwxDXK31+Z+ZXvXDGho0AuVjAREQBERAEREAREQBERAEREAXV7GSMLHtDmu6EH1XJOvmnrtAQ/xFx2Sz1UlXT2ttfYarba+mDd8m/32+2u6rvdbfc+Emc0+W43N9os88gcx3ccm/ijPz7hXmljZLG6ORoc1w04H2UEcUsBoaWSoo55CLTeCWtDz0gqP3SPbZ5QrxYM/VWfB+OOF09ZVMj+1mPbJoHalp3/AF79/dR8/htx/wAQeafDs4iudtaf1UFYWNOvYk9VoPBrI6/hZxQfYrs5zKKWTy37PwgHs4fLqrp0lRFV0sdRC4OjkaHBw9lD2BWaTh54hMvk+x5Xm0Vpt7//AJoqRzH9PYcvUfipk4UcMMZwC3NjtlO6asOzLWTO5pJCe/Vb4AB6IoyMHAPz2uURQAiIgCIiAIi6TPEcbpD2aCSgI28RGcR4bgdRJFMG11QDHC0O0e3VVv8ADrbIvtt1z28wvngt7OaMvGy+Z3YA/ivHxsv1dxG4tR2allL6aOXyomjsOvUqfMYxy2QXi38PaSAGgt8Qqa7Q/bk6AA/ifwWThEo2PhBjs/lzZdfI93S4nzGb/wAOM9Q38NKSAOu10hiZDEyKNnKxg5WgegX0VG8kAeqIigBERAEREAREQBEWHvl/pLaOQu55T2aFhuLmlbQdSrLCMlKlOrLpgssy4P4LnajypzG4vefLayNn4rZ8Rr6uvoXT1etc2mkeoWssddtL6s6VBttf6PruNNrW9PrqYwZzaxmSX224/bZK+5VDYYYxskleyrnipKaSokdpkbS5xVK+OfEOvyrJailiqXC2wvLY2A9D810tlZyuZ9K48mqrVlSjk3vPfEZWOrZafG6VjYGkgTSHZPz0sdwx4pZ5lGY0dvfV80b5AXtY06DfXfVQQ4g60ArP+ErDxHSVGUVUOjJ+rgJHcepH4Ld3lrb2lDONz5ac51pclh4wQwbO3aGysJnGPU2SWGa31B0dc0TtfsPHUO/HSzq4cdDetrmTYFP+NONS3DHH3CVnJebO8RucB1fGDvZ+alDwocQGZJihstdNuvoTrlc/ZLPT+IK2viraaFgZWSxAwVR8mq6dOV3TaqrSV1Zwo4ztfBzspDI1+tfC+Mn8lblEeS94Ox0XK8dprorlbYa6mcHMlaHAj1XsHZUJCIiAIiIAiIgC0LjzlDMV4cXGuEnJO9hjh66+Ijot9VV/G7kMslRbMZgdpvWaT5npofmrRWWDSfDLaG1N9uOZXJnNDb2GUF3XmceyspwOt08lvqsnuALqy6ymUF3drN7A/iouwfHnWHhRabBFGWXLIJGPeQeoZr/dWPs1FFbrZBRRBoZEwNGhodFMmD2IibVAEXVx2Ox18lyOutHogOURdJOcRuLdF2uiA7oosu3Eu4WO9T0NxtocxrvhLT117rO49xJsN2mZTkyU8r+wf7r4439u59HVubCel3UaaqdGY/dG7IuoIcOYHYPbS5Otb9l9hrzGZJcm26gc8EeY4aaFGNVUSVMzpZXbcT7rN5tchWXExMPwRdFrx6f1XkXq3WJXNz2qb+iO35Oz0ayVGl3Jcs+tPE6aZsTBsuOtKVrPSR0luihY0N6bK0zBbY6orBWSD9Ww9Oncrf3FrGFztAALqvR2m9mg7mS3nx8Gp1y6VSoqceERr4iMnbjnD2q8uUNqaoeVGPXqFSKRzpJC53Vx6lTD4oMwbf8AMDa6WcupaHbNA9C71/JQ63fUHv7r2HSbfs0ep8s427qZqJGRxi2zXe+0dvgj53zShuvzV/cJs8Fhxmit1PGGNjibzAe+uqrb4T8Mlr787JauEfZ6TpEHNGnOPr+ataAANAdFqdYue5U6F4PstafTHP3C4cQDo+q5QgHuFpz6TD5fa23nH6ygLfjdGfLPs7XRVP8AEJa23PDKS/sjAr7dIaSp9+nY/wAVcd/VuvdQFxOxnzb3eccaR5F+h86l32bKNjX5K8WDM+E/KXX7h3HR1EhdUUbuQ7dv4ddP5qZR2VMPCff3Y1xEqMcrHOaJ5PKHMTre+hVzmkOaCOxUSWGDlERVAREQBEXDurSEByqVeJqR9648R2xunNj8uIAe5J2rpuJ5ent0VJLif074rJA48zG3IDr7Aq8OSUT5a4HVHFW1W9gHlWqgHT/K461+RUwqM8Dpmz8S8iuIdvy3MhH3cyksdfuUMg5Uc8WL7fcfnp6qgcDTu/a2Om1IywOc2iO9Y3V0r2guLSWH2I6r5buE50moPDPssalOnXi6izHyRxj3F2YyNbc6ZnKTouZtSrZLtR3elbU0UrXtcOo31CqpVQvp6qSneOsby3X0W9cIMjltl9jpJ5P1M55evYH0XP2GrVO92qryjrNV9P0lQdagt1v8osDvXdCNrq1wc0O7g9QV2XUHDkVcc8ebNSMu8DdPYQ1+vUKGoJnU9QyaM8rmO3sK0+UW9tzsdVRuaDzxnW1VmrjdBUyQubyva47BC43X7d0q8a0eH+z0L0tdK4t3Qnv0/osjw2vIvWNwSudzSxjlestf6sUVpml5hsghqhfgvf8A9HXo0Ez9Q1HQA+6kLiFcGOdHRxvOh1dpbGtqsaemSr53Sx+TnbnS3DUe0l9LefwalK90kjnuOy47K4Y10jhG1vMXHS47716LO4XbzV3Nsj27jj+L715TY207+7VL/L/rOlr1Y29NzfCRvFgo20FshiHQkbKxPFC/R49hVfcXu05sTuT5u10C2cAaA12UDeL68tpcborVHPyvqXuc9nybrX5le9adaxUqdCK2WEedXFVvqmyq91qn11ymq3vLnSPLiT67ShhdV1LKdjSXyPAGl5wCQSFJHh8xp9/z2m54y6CD9Y89PRdvVqKjTcn4NJGPcmkWx4P2FuP4LbqPl5ZDE10nw6PMR1W4rpGwMa1gHwtGgu64ecnOTk/JuksLAREVSThw20gHR9/ZRpxsaKCbH77y9KOvYHu/0uI3+SkwqPvEDGH8M6+TlJMOpRr05eqlcklVcjh/QXiKgfAOVr6lrm+nQnury0TxJSRPB2C0KkHF4lvE+wXIdPNhjkJ+9XWx1/m2Kik/zQtP8FafCI8nvREVAEREAREQHU7DT9FSDhy77R4oZXSdT9tcfv2rwOHTe/RUfxf/ANp8U00b+h+3ub1+qvDySizHB/mfesmkf1cK3/uUkD8yo24UObBlWUURPx/aWv18viUk667VZckHK6uAILT2PRdkUArtxgsMlpyR9SyPUFR8bdehWnUc74J2SsOnMPMCrEcWrJ+lsakexgdLAC8dOuh3Vc3tIc5rgRy9FxOr0Pb124+d8npOg3furVRk8uOzLRYRcRc8apKkO2S0B31WcUN8C8hbHJJZKiTo480ez2UyLq7Guq9CMjhdTtnbXMoeM7fBw8BwIPqNKufFyzG15VPK0NEcxL2gfNWN9VoHGXHxdLF9ribuanO+nqF8+r2vuLdpcrc+zQL32t2m+JbEC0dS+lmZUxuLXNcCCFI9ruD7pSCpkeXuPclRk8FhII69lsmEVnlyOppHaDuy811GM5UXHOx6FcUlNdaW5uZ/ZJHqpDwGj+z2rznD4pTvfyWhUEDqqtZBHvZI6hS1b4BT0cUI/dborYeiLFyrSryW0VhfLOP1646KKo+Wz77Hf0VNfFTfzeOIZponfqaOIREb/f2d/mFa3PrzDYcUuFxmcG+VA9zd+pAVBMguEl1vtTXTP5nTSFxK9o0Sjmr3H4OHu54j0nga0717lW58KWJ/ozFn3qpY0T1ZHJ7hoVaOHFjfkWXUFtiBPmSAv16N31V+bHQQWu109BTsDI4WBoH0X061c4XbXkw2dPfqZ7URFzZsQiIgC03jSxr+Gd7DuwpXn+BW5LR+Oc3kcM7uNE+bA6MfUhSuSUVR41tcL3ij+znUjOv3q6GHHeLW3/8AO38lS3jW/myfGaR7vijpo2u+XVXTxFvJjNvb7QNH8FaXCI8mVREVAEREAREQHBAII91SXigW2PxOSVPVodW+Zv5E/wCyu2qYeMChfb+KlNc2s5BLGxwd7nZV4cgnbC5m0fF+4scfgrqRsrD7nfX81LPqoNtNzikuGH5C1zfJliMUsh9yG9D+CnBrgdeux39EktwdkRFQHSeNssbo3gFrgQQVW7ibYnWfI5wxhbBKeZismd7+5R/xmsDrrZPtVPGHT0/U/Meq1er2vuLd4W63N5oF77W7XU/plsyDrDcZrXdYq2B3K+NwKtDj1ziutogrYXBzXtG9KqRY5j3B3Qg6IUxcDMhBjktFRL2O4wf4rS6Dddufblw/2dH6nslVpKtDlfolz718qyJs9NJE8AhzSOq+je2l8LlUMpqOSZ50A1dZOSjFuXBwUE3JJclZM6twt+Q1VNGNNa8kfisNTzOhqY5Q4hzSFuPEKndUzvr+5c470tKIBYSfQrzOVSF1KfTxk9atKjlRjGXOCeuFdOyujbXu68jdA/NSGT3A7gqLeA93gdb5rZI8Nka7mG/VSZX1cFFSSVVRI2OKNpc5zjoALt9CoU6NnGMPz8nnWuOfvZqRXnxe5W9kFNjdNNy848ycA9SPQfwKrKNF2z2W38Xsidk2b19wa8Oi8wxxH/SFrVnopbncIKKnbzSzPDWt916RYUVQt03+Tkqzc6jLD+ELEWGaqyaeJxAAjgJHT5/yVmAta4ZWGLHMLt9tjYGuZEOfXq7XVbKOy5e7rd6q5GypQ6IpBERfMZAiIgB3roo38QVTrDY7c0cz6ypZG0epO/8AdSQVEnFi5QVOdY/b5HfqKFzqyq32Y0a1v8CpXJKK5cXjHV8a6WhYQ5sPlxaA7EFXds0flWqlj1rljaP4KhuOTS5bx5p6iIOeZavmd9Nq/NM0sp42HuGgFWn4I8n0REVAEREAREQBV28auLuuGJ017pouaWkeQ9w/yn/wrErX+IdkjyDD7ha3sDvOiIAPvpSnhgq/wLvL8g4cXDHHnnq7cGVFN79N7/krM8M77/aDEKG4f4pjDJm7/ZcB1VKeGN0lwHi19nqmlkbpTBKw9uUnStRwzc3Hc6uuNxPLqCr/AL3Ru300TvQ/FXkgSqiHt0RYwcEddrpNGyWNzHtDg4aI0vohOkJK2cUrJ+hcqlEbNQyjmZ06LCY/cZrVdoK2BxBa4Hupn442NlbYRcGMHm05J38vVQQQGtGiuF1OhK1uX0cPdHp2jXULyyXc5X0stbYK5tztVPWMcCHt2dFa9xAuBAZRRu7nbljuCVXUS4u5swIZE48pPqsTfqk1d0nm2C3nIb19PRfZ6h1N09MTXM9v7ORs7FRv5R8Rf/hia2Fs1NJFIN9DpRpXU5p6mSM9NFSlrZ17r55Vw6r6yjhuFEOaVwBLPXRC4jQqNxdOfbWcHWK/pWmFUeMmpcNzV/2ppPsnNsuG9dj7rbvFJlslmw+O107uWetBY/8A5ddVtvDDDmY/Q/ba4N+0lp3v90Kt3icyaK/Zz5FPIHw0beTY7b2dr2D0zp04dMJ/JwnqTUadxVc4cLb5ImG3uHN02VMfhUxyK75wa+ZpLaFgd29Sen5KHPorXeD2zOpMYrrrLDyPqZfLBPq1o2P+pdrqc+zbSS8nMWsG5psnoDQ0ERFx5tQiIgCIiA+VXNHT08k0ruVjGlzj7AKp3FvIJYrBkOQc36+6z/ZoDv8Awh31+KsJxbr5IMYkoaZ3LUVhELT7cx0T/FU24+XxldeaXG6H/hqCPkPL+8491kgiTfPBViwrb/VZHVQhwgaGxuPud7/JW+b6/VRr4dMVbjHDujjfCI55x5sg9QSApLCrJ5ZCCIiqAiIgCIiALhw3sH1C5RAU28W2AVNlyNmVW5hEE5L5C391wP8ANbJwlzaXJcPpLpD8V7x/TjoHc0PYgj19FPvE/FqbLsSrLVUNaTJGeQn0KpLht2r+E3FN8FdE8UwcYaiLtzMJ+fosq3RHkvZit8pMgsdPc6GQPjmYCR6tPqD9FllC2B3ZmM5JAyieJcbyEiekeDtsMjhst+Q3vopoB6bWNoscoRsIigg8t1ooq+3zUcoBZK0tIPzUEs4a3h2TfZPJ1Rg83mk9D17fd/NWAXze9rA52v2Rsr47uxpXLTn4NjY6lWs1KNPiRrktPTYviopafTSG8oPuVHw79drNZZdZbjWujO2xRnQasKT7dV5Z6o1KN5cdqj/GG39nS6VQlTg51P5PdnsstMau5QwgbBcFLETPLjZGB0A0tK4fW8vldWSN+EdG/Vbz9F2Xo+x9vaOq1hzefwaTXLhVa/SuERP4ic8qMQsLaejjPn1jSxsmujQqaVlTJU1clVO4ufI4ucPr6q+nFDB6DNrE6gqtMlaCYpPVpVY7jwBzOC4ugpYYp4S7pJ5gHT6Er0vSLihST63hnLXVOcnssojbGLRU32+0tupGFz55A0ADetnur6cPrDFjmK0VriZyGKMc43vqo94G8IIsOcLpc3RzXFw00AbDB/VTAGnmJ33HRfNql4rifTB7IzW9NwjvydkRFqj6AiIgC6SSNjaXPIaGjZJ6Bd9rROMFzqo7PDZrZKxlZXv5XO3+xEOsjvl8O1K3BG3F/N2+TWXlh5qOkBhpnDs6Q9N/l+ChHw+4bVcQOIYuVa10lLTzedO94OnddgL58VL06/3amw+wuMlJTv5GBp35j99SffqrX8AcFhwjCIKby2/aqj9bO71JIHRZpNRjsHySJDEyKFkTGgNaAAAu6IsACIiAIiIAiIgCIiA6v6aOifoq9eLHhhJfbYcns1MHVlONztazZcwevRWHXzqYY54HwysD2PGnNPYhSnhgo/wSzuR1I/Cru74Xn+4yPOjBKDsaPt00rT8N8ufVxss19kbDdYxoB3w+aB05hvvvuq8eJjhJV47c3Zbjcb20xfzytZ/hn36L58Kc+pcpt8OPZBUPp75TkOtta08unN7McfXfZZGsrJLLkBFHuAcQYrhVDHb7C6hvkI5XRu7Sgdng/NSCCD1B2sbWCDldSA4EEHr36LsigGiZNjNQat9RSM5mO6loWPteM11RO0yRujYD8RIUloAB2C5it6Usqtw67zvu14NvT1ivTp9C/wCTz2+lioqZlPE3QaF6ERdLCEacVGKwkaqUnJ5Y9U0N7RFYqCiIgCIiAIi17M8rt+MULZqp/PLKdRRA9Xn2CA+mW5BR2KkMksjXVLwRDCD8T3emgqw8ZsrrLZbaqpnuZdfrkTDHA07+yQa7fU9fxWY4pcRf0EZrjcacyXupYRTU7nf8Owj4Xa+ijPgbiFfxQ4hOrbq+Waihd5tTK5pIce4H5BZEsbk4N48JnDOqqrr/AGqvVKTAz4oDI39p3uN91bYNDQABoAdF5LTb6W2UMNFRwtihiaGtA+S9io3kgIiKAEREAREQBERAEREAQ9kRAeO40NJX0UlFXQtmhlBDmuGwQqmcfOBdZZJn3/D6d32ZrjI+OPoY/XYVvtH3XEkbJGFkjQ5rhogqU8Aovw54pupJBac3gmr6druQVDj+tp/QEH5d1POJZbdbSxlZb7iMisMh+HlduWEH0P0Xy4y+H6yZMJ7rYQ2hujhzFrRpsh+arJWQ5zwuvskG6qhfG7poHy5AsiSlwQy/djvtBdqZk1NN8Tht0bjpzfuWWBGtqoOF8XrDkscEWSyPst1j6Mrqc9D83DopiteVZRbKRlYx1Lktr9Z6R+pAPm3/AHVHFonJLiLUce4hY5eNRipdSVPrDUN5DtbXHKx7QWOa7Y/dO1UHdE2hKAIuNn2TaA5RdS8AbOh9Vh77lFkskHm3Guji9mb2530AQGZ6rzV1bS0cRlqKhkTW9y5yji7cQL3c2u/s3a/stJ611eeRgHuB1UQ57xJsdjnfJUXd1/urQQ1rDqBh9dd9/grKIJZzLP62pdNR2NwoqeMfrq6f4Q0e7R6qAeJPFWnpAaLG5Za64E6nr5vicD68i0Cuv2a8RLwKOmjqZmyu0yGPfKArBcFPDvTWwwXnLD9oqm/Eyn/db9VfZBMjvg/wjvXEG6fprJZZ3UZcHl0veT10rf4vj1pxy2RW+1UUNNFG0D4G6381kKWlgpYGwU8TYo2gANaNAL7KjlkBERVAREQBERAEREAREQBERAEREAREQHBA3vXX3WEyvFLHk9C6kvFBDUMd6uaNhZxcOOh22gKj8WfDVU0sz7hiD3Twnqad3dp+R9VEFFW8QeHNwJpv0jQOafiAJDD93ZfotrproW+xWJvuOWO9U7oLjbaeoa4a+KMEhXU/uMFNLLx0FbMymy6w01aD+1OxobKPnvX81ImO5xjFR8dkzq42xxGhBUPcWt+7elu2R+HTCLpI+amjkonuHTlJIBUZZB4VrjGXyWq7RSfF8LXEtOvwVk4hkh0OY5YxrW0WUWW5xj/7QGOP8FsdFmeWmLctBa5D/pqh/RVor/D7xLoSXUwklA3ox1H9SsS7htxgpDysoLsR7+eP+5TiJXcthNm2UtbsWu3t9iasf0WEuWa5cd812sNvB9DKZD/0qtQ4dcX6hwYaO6A+u5h/3LK0PAbifcdOq2Txb9ZKj+hRKKG5LN8zW3RQkXniPKXnfNFSlzGn5dFHOS8ZbHaJfLxW3GuqS34qutPmOB+W9rLWnwtXuo0brdWNB1sBxcdfepFxXw0YnbRG+vmkq3N7jqAplKJKK0XjLeIWfzimdNXzxE6bDGSGdfTQ6LfeG3hxyO71UNZfwKKjcQXt7vI+itljGF43jsDYrZaqaIt18fljmP391sLQANAAAeyxuf2JNVwLAcdw2gZT2qijbIGgOlLRzO+pW1ELlFQBERAEREAREQBERAEREAREQBERAEREAREQBERAND2QADsERAEREAXBaD3A/BcogOA1o7NA+5coiAJoeyIgCIiAIiIAiIgCIiAIiIAiIgCIiA//2Q==" alt="Logo" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0">
+      <div>
+        <h1 style="font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.3px">Pricing Lab</h1>
+        <p style="font-size:10px;color:var(--text3);margin-top:1px">Export Cost Calculator v3.0</p>
+      </div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Công cụ / Tools</div>
+    <button class="nav-item active" onclick="showPage('calc',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
+      Tính giá / Calculate
+    </button>
+    <button class="nav-item" onclick="showPage('saved',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      Đã lưu / Saved
+      <span class="nav-badge" id="saved-badge">0</span>
+    </button>
+    <button class="nav-item" onclick="showPage('compare',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      So sánh / Compare
+    </button>
+    <div class="nav-label" style="margin-top: 20px;">Hướng dẫn</div>
+    <button class="nav-item" onclick="showPage('guide',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Hướng dẫn / Guide
+    </button>
+  </nav>
+  <div style="padding: 12px 16px; border-top: 1px solid var(--border); font-size: 10px; color: var(--text3); line-height: 1.6;">
+    Kết quả chỉ mang tính tham khảo.<br>Luôn kiểm tra lại với thực tế.
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- PAGE: CALCULATE -->
+<div id="page-calc" class="page active">
+
+<div class="page-header">
+  <div class="page-title">Tính giá xuất khẩu / <span>Export Pricing</span></div>
+  <div class="header-actions">
+    <button class="btn" onclick="resetAll()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+      Reset
+    </button>
+  </div>
+</div>
+
+<!-- FX BAR -->
+<div class="fx-bar">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+  <label>Tỷ giá USD/VND (VCB mua chuyển khoản):</label>
+  <input type="number" id="fx-rate" value="25500" oninput="calc()">
+  <span class="fx-live" id="fx-status">⏳ Đang lấy tỷ giá...</span>
+</div>
+
+<!-- MODE -->
+<div class="mode-switch">
+  <div class="mode-card active" id="mode-mfg" onclick="setMode('mfg')">
+    <div class="mode-card-title">🏭 Gia công / Manufacturing</div>
+    <div class="mode-card-sub">Mua bán thành phẩm + tự đóng gói, gia công thêm</div>
+  </div>
+  <div class="mode-card" id="mode-trade" onclick="setMode('trade')">
+    <div class="mode-card-title">🔄 Trading</div>
+    <div class="mode-card-sub">Mua thành phẩm → bán luôn, không gia công</div>
+  </div>
+</div>
+
+<!-- SECTION 1: ORDER INFO -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">📋 Thông tin đơn hàng / Order Info</span>
+    <span class="section-badge badge-required">Bắt buộc</span>
+  </div>
+  <div class="g2" style="margin-bottom:10px">
+    <div class="field">
+      <label>Tên đơn hàng / Order name</label>
+      <input type="text" id="product-name" placeholder="VD: Đơn hàng cà phê T6/2025" oninput="calc()">
+    </div>
+    <div class="field">
+      <label>Thị trường xuất khẩu / Export market</label>
+      <select id="market" onchange="onMarketChange()">
+        <option value="">— Chọn thị trường / Select market —</option>
+        <option value="US">🇺🇸 United States (Mỹ)</option>
+        <option value="EU">🇪🇺 European Union (EU)</option>
+        <option value="JP">🇯🇵 Japan (Nhật Bản)</option>
+        <option value="AU">🇦🇺 Australia (Úc)</option>
+        <option value="KR">🇰🇷 South Korea (Hàn Quốc)</option>
+        <option value="CN">🇨🇳 China (Trung Quốc)</option>
+        <option value="SG">🇸🇬 Singapore</option>
+        <option value="CA">🇨🇦 Canada</option>
+        <option value="GB">🇬🇧 United Kingdom (Anh)</option>
+        <option value="AE">🇦🇪 UAE</option>
+        <option value="other">🌍 Thị trường khác / Other</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- MULTI-PRODUCT TABLE -->
+  <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:8px;margin-top:4px">
+    Danh sách sản phẩm / Product list
+  </div>
+  <div class="prod-table-header">
+    <span>Tên sản phẩm / Product</span>
+    <span>Số lượng / Qty</span>
+    <span>Đơn vị / Unit</span>
+    <span>Giá bán / Price (USD/đvt)</span>
+    <span>Thành tiền / Total (USD)</span>
+    <span></span>
+  </div>
+  <div id="product-rows"></div>
+  <button class="add-row-btn" onclick="addProductRow()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    Thêm sản phẩm / Add product
+  </button>
+  <div id="product-summary" style="display:none;margin-top:10px;padding:10px 12px;background:rgba(124,92,252,.06);border:1px solid rgba(124,92,252,.2);border-radius:var(--radius-sm);display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:12px;color:var(--text2)">Tổng doanh thu đơn hàng / Total order revenue:</span>
+    <strong id="product-rev-total" style="font-size:15px;color:var(--accent2)">—</strong>
+  </div>
+
+  <div style="margin-top:12px">
+    <div class="field" style="margin-bottom:0">
+      <label>Điều kiện bao bì trong giá bán / Packaging included in price</label>
+      <select id="pack-incl" onchange="calc()">
+        <option value="full">Đầy đủ: nhãn + thùng carton + túi + phụ kiện / Full packaging included</option>
+        <option value="partial">Một phần / Partial packaging</option>
+        <option value="none">Chưa bao gồm bao bì / No packaging (raw)</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 2: COGS -->
+<div class="section" id="cogs-section">
+  <div class="section-header">
+    <span class="section-title">📦 Giá vốn tại kho / COGS (EXW cost)</span>
+    <span class="section-badge badge-required">Bắt buộc</span>
+  </div>
+
+  <!-- MFG MODE -->
+  <div id="mfg-cogs">
+    <div class="cogs-header">
+      <span>Khoản mục / Item</span>
+      <span>Số lượng</span>
+      <span>Đơn giá VND</span>
+      <span>Đơn vị</span>
+      <span>VAT%</span>
+      <span></span>
+    </div>
+    <div id="cogs-rows"></div>
+    <button class="add-row-btn" onclick="addCogsRow()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Thêm khoản mục / Add item
+    </button>
+    <p style="font-size:10px;color:var(--text3);margin-top:8px;font-style:italic">
+      * VAT đầu vào tính thẳng vào chi phí (không hoàn thuế) / Input VAT included in cost — no refund assumed
+    </p>
+  </div>
+
+  <!-- TRADING MODE -->
+  <div id="trade-cogs" style="display:none">
+    <div class="g2">
+      <div class="field">
+        <label>Giá mua thành phẩm / Purchase price (VND/đvt/unit)</label>
+        <input type="number" id="t-price" placeholder="0" oninput="calc()">
+      </div>
+      <div class="field">
+        <label>VAT mua vào / Input VAT</label>
+        <select id="t-vat" onchange="calc()">
+          <option value="0">0% (hàng XK / export goods)</option>
+          <option value="8">8%</option>
+          <option value="10">10%</option>
+        </select>
+      </div>
+    </div>
+    <div class="g3">
+      <div class="field">
+        <label>Vận chuyển về kho / Freight to warehouse (VND)</label>
+        <input type="number" id="t-freight-in" placeholder="0" oninput="calc()">
+        <span class="hint">Nếu chưa tính trong giá mua / If not included in purchase price</span>
+      </div>
+      <div class="field">
+        <label>Chi phí lưu kho / Storage (VND)</label>
+        <input type="number" id="t-storage" placeholder="0" oninput="calc()">
+      </div>
+      <div class="field">
+        <label>Chi phí khác / Other COGS (VND)</label>
+        <input type="number" id="t-other" placeholder="0" oninput="calc()">
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);font-style:italic">
+      * VAT đầu vào tính thẳng vào chi phí / Input VAT included in cost
+    </div>
+  </div>
+
+  <!-- COGS SUMMARY -->
+  <div id="cogs-summary" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2)">
+      <span>Tổng giá vốn EXW / Total EXW cost:</span>
+      <strong id="cogs-total">—</strong>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:3px">
+      <span>Giá vốn / đơn vị / Unit cost:</span>
+      <span id="cogs-unit">—</span>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 3: LOGISTICS -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">🚢 Logistics & Incoterm</span>
+    <span class="section-badge badge-required">Bắt buộc</span>
+  </div>
+
+  <div class="incoterm-grid">
+    <button class="term-btn active" data-term="EXW" onclick="setIncoterm('EXW',this)">EXW</button>
+    <button class="term-btn" data-term="FOB" onclick="setIncoterm('FOB',this)">FOB</button>
+    <button class="term-btn" data-term="CNF" onclick="setIncoterm('CNF',this)">CNF/CFR</button>
+    <button class="term-btn" data-term="CIF" onclick="setIncoterm('CIF',this)">CIF</button>
+    <button class="term-btn risky" data-term="DAP" onclick="setIncoterm('DAP',this)">DAP/DDU ⚠️</button>
+    <button class="term-btn risky" data-term="DDP" onclick="setIncoterm('DDP',this)">DDP ⚠️</button>
+  </div>
+  <div class="incoterm-desc" id="incoterm-desc">Chọn Incoterm để xem mô tả / Select Incoterm to view description</div>
+  <div class="incoterm-risk" id="incoterm-risk"></div>
+
+  <!-- ALWAYS SHOWN (domestic) -->
+  <div style="margin-top:14px">
+    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:8px">Chi phí trong nước VN / Vietnam domestic charges</div>
+    <div class="g2">
+      <div class="field">
+        <label>Vận chuyển kho → cảng / Inland trucking (VND)</label>
+        <input type="number" id="l-inland" placeholder="0" oninput="calc()">
+      </div>
+      <div class="field">
+        <label>Phí D&I / THC / CFS (VND)</label>
+        <input type="number" id="l-thc" placeholder="0" oninput="calc()">
+      </div>
+    </div>
+    <div class="g2">
+      <div class="field">
+        <label>Chứng từ: CO, C/O, kiểm dịch, hun trùng / Docs (VND)</label>
+        <input type="number" id="l-docs" placeholder="0" oninput="calc()">
+      </div>
+      <div class="field">
+        <label>Môi giới hải quan / Customs broker (VND)</label>
+        <input type="number" id="l-broker" placeholder="0" oninput="calc()">
+      </div>
+    </div>
+  </div>
+
+  <!-- INTERNATIONAL (CNF, CIF, DAP, DDP) -->
+  <div id="intl-section" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:8px">Chi phí quốc tế / International charges</div>
+    <div class="g2">
+      <div class="field">
+        <label>Cước tàu / Ocean freight (USD)</label>
+        <input type="number" id="l-ocean" placeholder="0" step="0.01" oninput="calc()">
+        <span class="hint">Cập nhật từ forwarder, không quá 7 ngày / Get fresh quote from forwarder</span>
+      </div>
+      <div class="field" id="ins-field" style="display:none">
+        <label>Phí bảo hiểm / Insurance (USD)</label>
+        <input type="number" id="l-ins" placeholder="0" step="0.01" oninput="calc()">
+      </div>
+    </div>
+  </div>
+
+  <!-- DESTINATION (DAP, DDP) -->
+  <div id="dest-section" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:8px">Chi phí nước đến / Destination charges</div>
+    <div class="g2">
+      <div class="field">
+        <label>Phí dỡ hàng nước đến / Destination handling (USD)</label>
+        <input type="number" id="l-dest" placeholder="0" step="0.01" oninput="calc()">
+      </div>
+      <div class="field">
+        <label>Giao hàng chặng cuối / Last mile delivery (USD)</label>
+        <input type="number" id="l-lastmile" placeholder="0" step="0.01" oninput="calc()">
+      </div>
+    </div>
+    <div class="g2">
+      <div class="field">
+        <label>Thuế nhập khẩu nước đến / Import duty (%)</label>
+        <input type="number" id="l-duty-pct" placeholder="0" step="0.1" oninput="calc()">
+        <span class="hint" id="duty-hint"></span>
+      </div>
+      <div class="field">
+        <label>Chi phí thuế NK (tự tính) / Duty amount (USD)</label>
+        <input type="number" id="l-duty-amt" placeholder="Tự tính / Auto-calculated" readonly style="color:var(--text3)">
+      </div>
+    </div>
+    <div id="ddp-warning" style="display:none;font-size:11px;padding:8px 12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:var(--radius-sm);color:var(--red);margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- SECTION 4: COMMERCIAL & FINANCE -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">💳 Thương mại & Tài chính / Commercial & Finance</span>
+    <span class="section-badge badge-required">Bắt buộc</span>
+  </div>
+
+  <div class="g2">
+    <div class="field">
+      <label>Phương thức thanh toán / Payment term</label>
+      <select id="pay-term" onchange="onPayTermChange()">
+        <option value="tt100">T/T 100% trước khi giao hàng / Advance</option>
+        <option value="tt3070">T/T 30% đặt cọc + 70% trước khi giao / 30+70</option>
+        <option value="tt5050">T/T 50% + 50% trước khi giao / 50+50</option>
+        <option value="tt30after">T/T 30% + 70% sau khi nhận hàng / 30+70 after</option>
+        <option value="lc_sight">L/C at sight (thư tín dụng trả ngay)</option>
+        <option value="lc_defer">L/C trả chậm 60/90 ngày / Deferred L/C</option>
+        <option value="dp">D/P (nhờ thu kèm chứng từ)</option>
+        <option value="da">D/A (nhờ thu chấp nhận)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Tỷ lệ khách đặt cọc / Deposit received (%)</label>
+      <input type="number" id="deposit-pct" placeholder="0" value="30" min="0" max="100" oninput="calc()">
+      <span class="hint" id="pay-hint"></span>
+    </div>
+  </div>
+  <div class="g3">
+    <div class="field">
+      <label>Phí ngân hàng / Bank fee (%/doanh thu)</label>
+      <input type="number" id="bank-fee" value="0.2" step="0.05" oninput="calc()">
+      <span class="hint">LC phí ~0.2-0.5%, T/T ~0.1-0.2%</span>
+    </div>
+    <div class="field">
+      <label>Hoa hồng / môi giới / Commission (%)</label>
+      <input type="number" id="commission" value="0" step="0.5" min="0" max="10" oninput="calc()">
+      <span class="hint">Thường 0.5% - 5% / Typically 0.5%-5%</span>
+    </div>
+    <div class="field">
+      <label>Chi phí kiểm định / Certification (USD)</label>
+      <input type="number" id="cert-cost" value="0" step="10" oninput="calc()">
+      <span class="hint">FDA, CE, kiểm dịch, test chất lượng...</span>
+    </div>
+  </div>
+
+  <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;margin:12px 0 8px">Cấu trúc vốn / Capital structure</div>
+  <div class="g3">
+    <div class="field">
+      <label>Lãi suất vay / Loan interest rate (%/năm/year)</label>
+      <input type="number" id="interest-rate" value="9" step="0.5" oninput="calc()">
+      <span class="hint">VN ngắn hạn ~8-10%/năm. LC ~2%/năm</span>
+    </div>
+    <div class="field">
+      <label>Số ngày vốn bị kẹt / Capital tied (days)</label>
+      <input type="number" id="tied-days" value="90" min="1" oninput="calc()">
+      <span class="hint">Từ ngày bỏ tiền đến ngày nhận tiền về</span>
+    </div>
+    <div class="field">
+      <label>Overhead phân bổ / Overhead allocation (%DT)</label>
+      <input type="number" id="overhead-pct" value="3" step="0.5" oninput="calc()">
+      <span class="hint">Kho, lương VP, điện nước, mặt bằng...</span>
+    </div>
+  </div>
+
+  <!-- TIMELINE -->
+  <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;margin:12px 0 8px">Timeline dòng tiền / Cash flow timeline (tùy chọn)</div>
+  <div class="g4">
+    <div class="field">
+      <label>Ngày nhận PO / PO date</label>
+      <input type="date" id="d-po" onchange="calcTimeline()">
+    </div>
+    <div class="field">
+      <label>Ngày xuất hàng ETD / Shipment date</label>
+      <input type="date" id="d-etd" onchange="calcTimeline()">
+    </div>
+    <div class="field">
+      <label>Ngày hàng đến ETA / Arrival date</label>
+      <input type="date" id="d-eta" onchange="calcTimeline()">
+    </div>
+    <div class="field">
+      <label>Ngày nhận tiền / Payment received</label>
+      <input type="date" id="d-paid" onchange="calcTimeline()">
+    </div>
+  </div>
+  <div id="timeline-result" style="display:none;font-size:11px;color:var(--text3);padding:8px 12px;background:var(--bg3);border-radius:var(--radius-sm)"></div>
+</div>
+
+<!-- RESULTS -->
+<div class="results-panel" id="results-panel">
+  <div class="section-header">
+    <span class="section-title" style="color:var(--accent2)">📊 Kết quả / Results</span>
+  </div>
+
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-label">Doanh thu / Revenue</div>
+      <div class="metric-value accent" id="r-revenue">—</div>
+      <div class="metric-sub" id="r-revenue-vnd">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Lợi nhuận ròng / Net profit</div>
+      <div class="metric-value" id="r-net">—</div>
+      <div class="metric-sub" id="r-net-vnd">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Biên lợi nhuận / Net margin</div>
+      <div class="metric-value" id="r-margin">—</div>
+      <div class="metric-sub" id="r-margin-grade">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">ROI thực / Annualized ROI</div>
+      <div class="metric-value" id="r-roi">—</div>
+      <div class="metric-sub" id="r-roi-grade">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Vốn cần ứng / Working capital</div>
+      <div class="metric-value" id="r-wc">—</div>
+      <div class="metric-sub" id="r-wc-days">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Giá vốn / Unit COGS</div>
+      <div class="metric-value" id="r-unitcost">—</div>
+      <div class="metric-sub" id="r-gross-margin">—</div>
+    </div>
+  </div>
+
+  <div class="breakdown">
+    <div class="breakdown-title">Chi tiết lãi lỗ / P&L Breakdown</div>
+    <div class="brow"><span>Doanh thu / Revenue</span><span id="b-rev">—</span></div>
+    <div class="brow indent"><span>— Giá vốn EXW / COGS</span><span id="b-cogs">—</span></div>
+    <div class="brow indent"><span>— Logistics tổng / Total logistics</span><span id="b-logi">—</span></div>
+    <div class="brow indent"><span>— Phí ngân hàng / Bank fees</span><span id="b-bank">—</span></div>
+    <div class="brow indent"><span>— Hoa hồng / Commission</span><span id="b-comm">—</span></div>
+    <div class="brow indent"><span>— Lãi vay / Loan interest</span><span id="b-int">—</span></div>
+    <div class="brow indent"><span>— Overhead phân bổ / Overhead</span><span id="b-over">—</span></div>
+    <div class="brow indent"><span>— Kiểm định / Certification</span><span id="b-cert">—</span></div>
+    <div class="brow subtotal"><span>Lợi nhuận gộp trước thuế / Gross profit before tax</span><span id="b-profit-sub">—</span></div>
+    <div class="brow profit" id="b-profit-row"><span>✅ Lợi nhuận ròng / Net profit</span><span id="b-profit">—</span></div>
+  </div>
+
+  <div style="margin-top:16px">
+    <div class="breakdown-title">Phân tích rủi ro / Sensitivity Analysis</div>
+    <div id="sensitivity-rows"></div>
+  </div>
+</div>
+
+<!-- AI RECOMMEND -->
+<div class="ai-panel">
+  <div class="section-header">
+    <span class="section-title">🤖 AI Recommend — Phân tích & Tư vấn</span>
+  </div>
+  <div class="ai-header">
+    <div class="score-ring" id="ai-score-ring" style="border-color:var(--border);color:var(--text3)">—</div>
+    <div>
+      <div class="ai-verdict-text" id="ai-verdict">Nhập đủ thông tin để phân tích</div>
+      <div class="ai-verdict-sub" id="ai-sub">Enter data to get AI analysis</div>
+    </div>
+  </div>
+  <div class="ai-items" id="ai-items">
+    <div class="ai-item info">
+      <span class="ai-icon">💡</span>
+      <span>Điền các thông tin ở trên để nhận phân tích chi tiết về tính khả thi, rủi ro và khuyến nghị của đơn hàng.<br>Fill in the information above to receive detailed analysis on viability, risks, and recommendations.</span>
+    </div>
+  </div>
+  <div class="market-hint" id="market-hint" style="display:none"></div>
+</div>
+
+<!-- ACTION BAR -->
+<div class="action-bar">
+  <input type="text" id="save-name" placeholder="Đặt tên kịch bản / Scenario name (VD: Cà phê - Mỹ - FOB - T6/2025)">
+  <button class="btn primary" onclick="saveResult()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+    Lưu kịch bản / Save
+  </button>
+  <button class="btn" onclick="exportCSV()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    Excel/CSV
+  </button>
+  <button class="btn" onclick="window.print()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    In / Print PDF
+  </button>
+</div>
+</div><!-- end page-calc -->
+
+<!-- PAGE: SAVED -->
+<div id="page-saved" class="page">
+  <div class="page-header">
+    <div class="page-title">Kịch bản đã lưu / <span>Saved Scenarios</span></div>
+    <button class="btn danger sm" onclick="if(confirm('Xóa tất cả?'))clearAllSaved()">Xóa tất cả / Clear all</button>
+  </div>
+  <div id="saved-list">
+    <div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      <p>Chưa có kịch bản nào được lưu<br>No saved scenarios yet</p>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: COMPARE -->
+<div id="page-compare" class="page">
+  <div class="page-header">
+    <div class="page-title">So sánh kịch bản / <span>Compare Scenarios</span></div>
+    <button class="btn sm" onclick="exportCompareCSV()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Export so sánh / Export
+    </button>
+  </div>
+  <div id="compare-content">
+    <div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <p>Lưu ít nhất 2 kịch bản để so sánh<br>Save at least 2 scenarios to compare</p>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: GUIDE -->
+<div id="page-guide" class="page">
+  <div class="page-header">
+    <div class="page-title">Hướng dẫn sử dụng / <span>User Guide</span></div>
+  </div>
+  <div class="section">
+    <div class="section-header"><span class="section-title">📊 Kiểm tra giá thị trường / Verify market price</span></div>
+    <div style="font-size:12px;line-height:2;color:var(--text2)">
+      <p style="margin-bottom:8px"><strong style="color:var(--text)">1. Trade Map (ITC)</strong> — trademap.org</p>
+      <p style="padding-left:16px;color:var(--text3)">Trade Statistics → Product (nhập HS code) → Importing country → Average unit value (USD/kg)<br>Xem: Unit value of imports, Quantity, Value</p>
+      <p style="margin:8px 0"><strong style="color:var(--text)">2. ITC Export Potential Map</strong> — exportpotential.intracen.org</p>
+      <p style="padding-left:16px;color:var(--text3)">Tìm thị trường tiềm năng và giá tham khảo theo HS code</p>
+      <p style="margin:8px 0"><strong style="color:var(--text)">3. USDA</strong> (nông sản) — fas.usda.gov</p>
+      <p style="margin:8px 0"><strong style="color:var(--text)">4. Alibaba / Global Sources</strong> (tham khảo giá đối thủ)</p>
+      <p style="margin:8px 0"><strong style="color:var(--red)">⚠️ Lưu ý:</strong> Dữ liệu Trade Map thường trễ 6-12 tháng. Luôn xác nhận lại giá thực tế từ báo giá khách hàng.</p>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-header"><span class="section-title">💡 Ngưỡng đánh giá / Scoring thresholds</span></div>
+    <table style="width:100%;font-size:12px;border-collapse:collapse">
+      <thead><tr style="color:var(--text3)"><th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border)">Chỉ số</th><th style="padding:6px 10px;border-bottom:1px solid var(--border);color:var(--red)">🔴 Nguy hiểm</th><th style="padding:6px 10px;border-bottom:1px solid var(--border);color:var(--yellow)">🟡 Cần xem</th><th style="padding:6px 10px;border-bottom:1px solid var(--border);color:var(--green)">🟢 Tốt</th></tr></thead>
+      <tbody>
+        <tr><td style="padding:6px 10px;border-bottom:1px solid var(--border)">Net Margin</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:center;color:var(--red)">&lt; 5%</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:center;color:var(--yellow)">5% – 10%</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:center;color:var(--green)">&gt; 10%</td></tr>
+        <tr><td style="padding:6px 10px;border-bottom:1px solid var(--border)">ROI/năm</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:center;color:var(--red)">&lt; 15%</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:center;color:var(--yellow)">15% – 25%</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:center;color:var(--green)">&gt; 25%</td></tr>
+        <tr><td style="padding:6px 10px;border-bottom:1px solid var(--border)">Ngày vốn kẹt</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:center;color:var(--red)">&gt; 120 ngày</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:center;color:var(--yellow)">60 – 120 ngày</td><td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:center;color:var(--green)">&lt; 60 ngày</td></tr>
+        <tr><td style="padding:6px 10px">Incoterm risk</td><td style="padding:6px 10px;text-align:center;color:var(--red)">DDP</td><td style="padding:6px 10px;text-align:center;color:var(--yellow)">DAP/DDU, CNF</td><td style="padding:6px 10px;text-align:center;color:var(--green)">EXW, FOB</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="section">
+    <div class="section-header"><span class="section-title">📝 Công thức tính / Key formulas</span></div>
+    <div style="font-size:12px;line-height:2.2;color:var(--text2)">
+      <div><strong style="color:var(--accent2)">Giá vốn EXW</strong> = Σ(Số lượng × Đơn giá × (1 + VAT%))</div>
+      <div><strong style="color:var(--accent2)">Net Profit</strong> = Revenue − COGS − Logistics − Bank fee − Commission − Interest − Overhead − Cert</div>
+      <div><strong style="color:var(--accent2)">Net Margin</strong> = Net Profit / Revenue × 100%</div>
+      <div><strong style="color:var(--accent2)">Working Capital</strong> = COGS + Logistics − Deposit received</div>
+      <div><strong style="color:var(--accent2)">Interest</strong> = Working Capital × Interest rate × (Tied days / 365)</div>
+      <div><strong style="color:var(--accent2)">ROI annualized</strong> = (Net Profit / Working Capital) × (365 / Tied days) × 100%</div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────
+let mode = 'mfg';
+let incoterm = 'EXW';
+let saved = [];
+let cogsItems = [];
+let productItems = [];
+let lastResult = {};
+
+const INCOTERMS = {
+  EXW: { desc: 'EXW (Ex Works): Bạn giao hàng tại kho — người mua chịu toàn bộ chi phí và rủi ro từ kho của bạn ra đến điểm đến. Seller delivers at own premises; buyer bears all costs & risks from that point.', risk: 1, intl: false, dest: false, tags: ['Rủi ro thấp nhất','Trách nhiệm tối thiểu'] },
+  FOB: { desc: 'FOB (Free On Board): Bạn chịu đến khi hàng qua lan can tàu tại cảng xuất. Seller responsible until goods pass ship\'s rail at origin port. Phổ biến nhất trong XK VN.', risk: 2, intl: false, dest: false, tags: ['Rủi ro thấp','Phổ biến XK VN'] },
+  CNF: { desc: 'CNF/CFR (Cost & Freight): Bạn trả cước tàu đến cảng đến, nhưng rủi ro chuyển khi hàng lên tàu. Chưa bao gồm bảo hiểm. Seller pays freight to destination port, risk transfers at origin.', risk: 3, intl: true, dest: false, tags: ['Trung bình','Chưa có bảo hiểm'] },
+  CIF: { desc: 'CIF (Cost, Insurance & Freight): Bạn trả cước + bảo hiểm đến cảng đến. Seller pays freight + insurance to destination port. Thường dùng khi khách muốn bảo hiểm.', risk: 3, intl: true, dest: false, tags: ['Trung bình','Có bảo hiểm'] },
+  DAP: { desc: '⚠️ DAP/DDU (Delivered At Place): Bạn giao đến địa chỉ của khách ở nước ngoài, CHƯA bao gồm thuế nhập khẩu. Seller delivers to buyer\'s named address — import duty excluded. RỦI RO CAO — cần buffer margin ≥ 10%.', risk: 4, intl: true, dest: true, tags: ['Rủi ro cao ⚠️','Buffer ≥ 10%','Last mile included'] },
+  DDP: { desc: '⚠️ DDP (Delivered Duty Paid): Bạn chịu TOÀN BỘ chi phí gồm cả thuế NK tại nước đến. Seller bears ALL costs incl. import duty at destination. RỦI RO CAO NHẤT — buffer margin ≥ 15-18%, đặc biệt khi tariff biến động.', risk: 5, intl: true, dest: true, tags: ['Rủi ro cao nhất ⚠️','Buffer ≥ 15%','Chịu cả thuế NK'] }
+};
+
+const MARKET_INFO = {
+  US: { duty: '⚠️ Thuế NK Mỹ đang biến động (tariff war 2025). Kiểm tra HTS code tại hts.usitc.gov. DDP vào Mỹ rủi ro rất cao hiện tại.', fta: 'VN chưa có FTA với Mỹ — thuế MFN áp dụng.' },
+  EU: { duty: 'EU: Kiểm tra TARIC database (ec.europa.eu/taxation_customs/dds2/taric). EVFTA cho VN ưu đãi thuế nhiều HS code.', fta: 'EVFTA: nhiều sản phẩm VN vào EU thuế 0% hoặc giảm dần. Cần C/O form EUR.1.' },
+  JP: { duty: 'Nhật: Kiểm tra thuế tại customs.go.jp. VJEPA & CPTPP cho VN ưu đãi thuế.', fta: 'VJEPA/CPTPP: nhiều mặt hàng thuế 0% nếu có C/O form AJ/CPTPP.' },
+  AU: { duty: 'Úc: Kiểm tra tại abf.gov.au. ASFTA áp dụng.', fta: 'ASFTA: đa số sản phẩm VN vào Úc thuế 0%. Cần C/O form AANZ.' },
+  KR: { duty: 'Hàn Quốc: VKFTA áp dụng từ 2015.', fta: 'VKFTA: lộ trình giảm thuế theo HS code. Kiểm tra tại customs.go.kr.' },
+  SG: { duty: 'Singapore: Hầu hết hàng hóa thuế 0% (free port).', fta: 'ASEAN FTA + VSFTA. Singapore là free trade port.' },
+  CN: { duty: 'Trung Quốc: Kiểm tra thuế tại customs.gov.cn.', fta: 'ACFTA (ASEAN-China FTA). Một số mặt hàng ưu đãi.' },
+  other: { duty: 'Kiểm tra thuế NK tại Trade Map hoặc liên hệ forwarder tại nước đến.', fta: 'Kiểm tra FTA giữa VN và thị trường đích.' }
+};
+
+const DEFAULT_COGS = [
+  { name: 'Bán thành phẩm từ xưởng / Semi-finished goods', qty: 1, price: 0, unit: 'lô/lot', vat: 10 },
+  { name: 'Nhãn dán / Label', qty: 0, price: 0, unit: 'cái/pcs', vat: 10 },
+  { name: 'Thùng carton / Carton box', qty: 0, price: 0, unit: 'thùng/box', vat: 10 },
+  { name: 'Túi chân không / Vacuum bag', qty: 0, price: 0, unit: 'cái/pcs', vat: 10 },
+  { name: 'Băng keo, đai nẹp / Tape & strapping', qty: 0, price: 0, unit: 'cuộn/roll', vat: 10 },
+  { name: 'Nhân công đóng gói / Packing labor', qty: 0, price: 0, unit: 'ngày/day', vat: 0 },
+];
+
+// ─── INIT ─────────────────────────────────────────────
+function init() {
+  cogsItems = DEFAULT_COGS.map(r => ({ ...r }));
+  productItems = [
+    { name: '', qty: 0, unit: 'cái/pcs', price: 0 },
+  ];
+  renderCogsRows();
+  renderProductRows();
+  setIncoterm('EXW', document.querySelector('[data-term="EXW"]'));
+  fetchFX();
+  calc();
+}
+
+function fetchFX() {
+  const status = document.getElementById('fx-status');
+  status.textContent = '📡 Lấy tỷ giá VCB... / Fetching VCB rate...';
+  setTimeout(() => {
+    document.getElementById('fx-rate').value = 25500;
+    status.textContent = '✅ VCB ~25,500 (cập nhật thủ công / manual - hãy kiểm tra vcb.com.vn)';
+  }, 800);
+}
+
+// ─── PAGE NAVIGATION ──────────────────────────────────
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id === 'saved') renderSaved();
+  if (id === 'compare') renderCompare();
+}
+
+// ─── MODE ─────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.getElementById('mode-mfg').classList.toggle('active', m === 'mfg');
+  document.getElementById('mode-trade').classList.toggle('active', m === 'trade');
+  document.getElementById('mfg-cogs').style.display = m === 'mfg' ? '' : 'none';
+  document.getElementById('trade-cogs').style.display = m === 'trade' ? '' : 'none';
+  calc();
+}
+
+// ─── INCOTERM ─────────────────────────────────────────
+function setIncoterm(t, btn) {
+  incoterm = t;
+  document.querySelectorAll('.term-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const info = INCOTERMS[t];
+  document.getElementById('incoterm-desc').textContent = info.desc;
+  const riskEl = document.getElementById('incoterm-risk');
+  const colors = { 1: '#22c55e', 2: '#22c55e', 3: '#f59e0b', 4: '#ef4444', 5: '#ef4444' };
+  riskEl.innerHTML = info.tags.map(tag => `<span class="risk-tag" style="background:${colors[info.risk]}22;color:${colors[info.risk]}">${tag}</span>`).join('');
+  document.getElementById('intl-section').style.display = info.intl ? '' : 'none';
+  document.getElementById('dest-section').style.display = info.dest ? '' : 'none';
+  document.getElementById('ins-field').style.display = (t === 'CIF' || t === 'DAP' || t === 'DDP') ? '' : 'none';
+  updateDutyWarning();
+  calc();
+}
+
+function updateDutyWarning() {
+  const mkt = document.getElementById('market').value;
+  const warn = document.getElementById('ddp-warning');
+  if ((incoterm === 'DDP' || incoterm === 'DAP') && mkt) {
+    const info = MARKET_INFO[mkt] || MARKET_INFO.other;
+    warn.style.display = '';
+    warn.innerHTML = `<strong>⚠️ ${incoterm} vào ${mkt}:</strong> ${info.duty}<br><em style="color:var(--text3)">${info.fta}</em>`;
+  } else {
+    warn.style.display = 'none';
+  }
+}
+
+function onMarketChange() {
+  updateDutyWarning();
+  updateMarketHint();
+  calc();
+}
+
+function updateMarketHint() {
+  const mkt = document.getElementById('market').value;
+  const hint = document.getElementById('market-hint');
+  if (!mkt) { hint.style.display = 'none'; return; }
+  const info = MARKET_INFO[mkt] || MARKET_INFO.other;
+  hint.style.display = '';
+  hint.innerHTML = `<strong>📊 Kiểm tra giá thị trường ${mkt} / Verify market price:</strong><br>${info.duty}<br><br>${info.fta}<br><br><strong>Nguồn tham khảo:</strong> <a href="https://www.trademap.org" target="_blank" style="color:var(--blue)">Trade Map (ITC)</a> → Trade Statistics → Product → Importing Country → Average unit value`;
+}
+
+// ─── PAYMENT ──────────────────────────────────────────
+function onPayTermChange() {
+  const t = document.getElementById('pay-term').value;
+  const dep = document.getElementById('deposit-pct');
+  const hint = document.getElementById('pay-hint');
+  const hints = {
+    tt100: { dep: 100, h: '✅ An toàn nhất — nhận đủ tiền trước khi làm hàng / Safest — full payment before production' },
+    tt3070: { dep: 30, h: '⚡ Cần ứng 70% — kiểm tra working capital / Need to fund 70% of order value' },
+    tt5050: { dep: 50, h: '⚡ Cần ứng 50% cho đến khi giao hàng / Fund 50% until shipment' },
+    tt30after: { dep: 30, h: '⚠️ Rủi ro cao — 70% thu sau khi khách nhận hàng / High risk — 70% collected after delivery' },
+    lc_sight: { dep: 0, h: '🏦 L/C at sight: An toàn, phí ~0.2-0.5%, NH thanh toán khi xuất trình chứng từ hợp lệ / Safe, bank pays on document presentation' },
+    lc_defer: { dep: 0, h: '🏦 L/C trả chậm: NH bảo lãnh nhưng tiền về sau 60-90 ngày — cần vay bridge loan / Bank guaranteed but payment after 60-90d' },
+    dp: { dep: 0, h: '⚠️ D/P: NH kiểm soát chứng từ — khách phải thanh toán mới được nhận hàng / Bank controls docs — buyer must pay to release' },
+    da: { dep: 0, h: '🔴 D/A: Rủi ro cao nhất — không có bảo đảm thanh toán, chỉ dùng với khách lâu năm / Highest risk — no payment guarantee, trusted buyers only' }
+  };
+  if (hints[t]) { dep.value = hints[t].dep; hint.textContent = hints[t].h; }
+  calc();
+}
+
+// ─── TIMELINE ─────────────────────────────────────────
+function calcTimeline() {
+  const po = document.getElementById('d-po').value;
+  const etd = document.getElementById('d-etd').value;
+  const eta = document.getElementById('d-eta').value;
+  const paid = document.getElementById('d-paid').value;
+  const result = document.getElementById('timeline-result');
+  if (!po && !paid) { result.style.display = 'none'; return; }
+  const parts = [];
+  if (po && etd) { const d = Math.round((new Date(etd) - new Date(po)) / 86400000); parts.push(`PO→ETD: ${d} ngày (chuẩn bị hàng/prep time)`); }
+  if (etd && eta) { const d = Math.round((new Date(eta) - new Date(etd)) / 86400000); parts.push(`ETD→ETA: ${d} ngày (transit time)`); }
+  if (po && paid) {
+    const d = Math.round((new Date(paid) - new Date(po)) / 86400000);
+    parts.push(`📅 Tổng vốn kẹt / Total tied: ${d} ngày`);
+    document.getElementById('tied-days').value = d;
+    calc();
+  }
+  result.style.display = '';
+  result.textContent = parts.join(' | ');
+}
+
+// ─── COGS ROWS ────────────────────────────────────────
+function addCogsRow() {
+  cogsItems.push({ name: '', qty: 1, price: 0, unit: 'cái/pcs', vat: 10 });
+  renderCogsRows();
+  calc();
+}
+
+function removeCogsRow(i) {
+  cogsItems.splice(i, 1);
+  renderCogsRows();
+  calc();
+}
+
+function renderCogsRows() {
+  const container = document.getElementById('cogs-rows');
+  const units = ['cái/pcs', 'kg', 'thùng/box', 'lô/lot', 'ngày/day', 'cuộn/roll', 'bộ/set', 'túi/bag'];
+  container.innerHTML = cogsItems.map((r, i) => `
+    <div class="cogs-row">
+      <input type="text" value="${r.name}" placeholder="Tên khoản mục / Item name" onchange="cogsItems[${i}].name=this.value">
+      <input type="number" value="${r.qty || ''}" placeholder="SL" onchange="cogsItems[${i}].qty=+this.value;calc()">
+      <input type="number" value="${r.price || ''}" placeholder="VND" onchange="cogsItems[${i}].price=+this.value;calc()">
+      <select onchange="cogsItems[${i}].unit=this.value">
+        ${units.map(u => `<option ${r.unit === u ? 'selected' : ''}>${u}</option>`).join('')}
+      </select>
+      <select onchange="cogsItems[${i}].vat=+this.value;calc()">
+        <option value="0" ${r.vat === 0 ? 'selected' : ''}>0%</option>
+        <option value="8" ${r.vat === 8 ? 'selected' : ''}>8%</option>
+        <option value="10" ${r.vat === 10 ? 'selected' : ''}>10%</option>
+      </select>
+      <button class="del-btn" onclick="removeCogsRow(${i})">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+// ─── PRODUCT ROWS ─────────────────────────────────────
+function addProductRow() {
+  productItems.push({ name: '', qty: 0, unit: 'cái/pcs', price: 0 });
+  renderProductRows();
+  calc();
+}
+
+function removeProductRow(i) {
+  if (productItems.length <= 1) { showToast('Cần ít nhất 1 sản phẩm / Need at least 1 product', 'error'); return; }
+  productItems.splice(i, 1);
+  renderProductRows();
+  calc();
+}
+
+function renderProductRows() {
+  const container = document.getElementById('product-rows');
+  const units = ['cái/pcs', 'kg', 'g', 'thùng/carton', 'bộ/set', 'lô/lot', 'túi/bag', 'hộp/box', 'chai/bottle', 'tấm/sheet', 'mét/m', 'cuộn/roll'];
+  container.innerHTML = productItems.map((r, i) => {
+    const total = (r.qty || 0) * (r.price || 0);
+    return `<div class="prod-row">
+      <input type="text" value="${r.name || ''}" placeholder="Tên sản phẩm / Product name" onchange="productItems[${i}].name=this.value;calc()">
+      <input type="number" value="${r.qty || ''}" placeholder="0" min="0" onchange="productItems[${i}].qty=+this.value;calc()">
+      <select onchange="productItems[${i}].unit=this.value;calc()">
+        ${units.map(u => `<option value="${u}" ${r.unit === u ? 'selected' : ''}>${u}</option>`).join('')}
+      </select>
+      <input type="number" value="${r.price || ''}" placeholder="0.00" step="0.01" min="0" onchange="productItems[${i}].price=+this.value;calc()">
+      <div class="prod-row-total">${total > 0 ? '$' + total.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2}) : '—'}</div>
+      <button class="del-btn" onclick="removeProductRow(${i})">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`;
+  }).join('');
+}
+
+// ─── HELPER ───────────────────────────────────────────
+function n(id) { return parseFloat(document.getElementById(id).value) || 0; }
+function fU(v) { return '$' + (v || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
+function fV(v) { return ((v || 0) / 1e6).toFixed(2) + 'M ₫'; }
+function fP(v) { return (v || 0).toFixed(1) + '%'; }
+function colorClass(v, g, y) { return v >= g ? 'green' : v >= y ? 'yellow' : 'red'; }
+
+// ─── MAIN CALC ────────────────────────────────────────
+function calc() {
+  const fx = n('fx-rate') || 25500;
+
+  // MULTI-PRODUCT REVENUE
+  let revUSD = 0;
+  let totalQty = 0;
+  productItems.forEach(r => {
+    const lineTotal = (r.qty || 0) * (r.price || 0);
+    revUSD += lineTotal;
+    totalQty += (r.qty || 0);
+  });
+  const revVND = revUSD * fx;
+
+  // Update product summary
+  const summaryEl = document.getElementById('product-summary');
+  const revTotalEl = document.getElementById('product-rev-total');
+  if (revUSD > 0) {
+    summaryEl.style.display = 'flex';
+    revTotalEl.textContent = fU(revUSD) + '  (' + fV(revVND) + ')';
+  } else {
+    summaryEl.style.display = 'none';
+  }
+  // Re-render rows to update totals
+  renderProductRows();
+
+  // For backward compat: derive avg unit price
+  const qty = totalQty;
+  const sellUSD = qty > 0 ? revUSD / qty : 0;
+
+  // COGS
+  let cogsVND = 0;
+  if (mode === 'mfg') {
+    cogsItems.forEach(r => { cogsVND += (r.qty || 0) * (r.price || 0) * (1 + (r.vat || 0) / 100); });
+  } else {
+    const bp = n('t-price') * qty;
+    const bv = n('t-vat') / 100;
+    cogsVND = bp * (1 + bv) + n('t-freight-in') + n('t-storage') + n('t-other');
+  }
+  const cogsUSD = cogsVND / fx;
+  const cogsUnit = qty > 0 ? cogsUSD / qty : 0;
+
+  if (cogsVND > 0) {
+    document.getElementById('cogs-summary').style.display = '';
+    document.getElementById('cogs-total').textContent = fV(cogsVND) + ' (' + fU(cogsUSD) + ')';
+    document.getElementById('cogs-unit').textContent = fV(cogsVND / (qty || 1)) + ' / ' + fU(cogsUnit) + ' per unit';
+  } else {
+    document.getElementById('cogs-summary').style.display = 'none';
+  }
+
+  // LOGISTICS
+  const lInland = n('l-inland') / fx;
+  const lThc = n('l-thc') / fx;
+  const lDocs = n('l-docs') / fx;
+  const lBroker = n('l-broker') / fx;
+  const lOcean = n('l-ocean');
+  const lIns = n('l-ins');
+  const lDest = n('l-dest');
+  const lLastmile = n('l-lastmile');
+  const lDutyPct = n('l-duty-pct') / 100;
+  const lDutyAmt = revUSD * lDutyPct;
+  if (lDutyPct > 0) document.getElementById('l-duty-amt').value = lDutyAmt.toFixed(2);
+  const logiUSD = lInland + lThc + lDocs + lBroker + lOcean + lIns + lDest + lLastmile + lDutyAmt;
+
+  // COMMERCIAL
+  const bankPct = n('bank-fee') / 100;
+  const bankUSD = revUSD * bankPct;
+  const commPct = n('commission') / 100;
+  const commUSD = revUSD * commPct;
+  const certUSD = n('cert-cost');
+  const overPct = n('overhead-pct') / 100;
+  const overUSD = revUSD * overPct;
+
+  // FINANCE
+  const depPct = n('deposit-pct') / 100;
+  const depUSD = revUSD * depPct;
+  const needBorrow = Math.max(0, cogsUSD + logiUSD - depUSD);
+  const ir = n('interest-rate') / 100;
+  const payTerm = document.getElementById('pay-term').value;
+  const effectiveIR = (payTerm === 'lc_sight' || payTerm === 'lc_defer') ? 0.02 : ir;
+  const tiedDays = n('tied-days') || 90;
+  const interestUSD = needBorrow * effectiveIR * (tiedDays / 365);
+
+  // TOTALS
+  const totalCostUSD = cogsUSD + logiUSD + bankUSD + commUSD + certUSD + overUSD + interestUSD;
+  const netUSD = revUSD - totalCostUSD;
+  const netVND = netUSD * fx;
+  const netMargin = revUSD > 0 ? (netUSD / revUSD) * 100 : 0;
+  const workingCapUSD = Math.max(0, cogsUSD + logiUSD - depUSD);
+  const roi = workingCapUSD > 0 && tiedDays > 0 ? (netUSD / workingCapUSD) * (365 / tiedDays) * 100 : 0;
+  const grossMargin = sellUSD > 0 && cogsUnit > 0 ? ((sellUSD - cogsUnit) / sellUSD) * 100 : 0;
+
+  if (revUSD > 0) {
+    // METRICS
+    setMetric('r-revenue', fU(revUSD), fV(revVND), 'accent');
+    setMetric('r-net', fU(netUSD), fV(netVND), netUSD >= 0 ? colorClass(netMargin, 10, 5) : 'red');
+    setMetric('r-margin', fP(netMargin), netMargin >= 10 ? '✅ Tốt / Good' : netMargin >= 5 ? '⚡ Mỏng / Thin' : '🔴 Nguy hiểm / Dangerous', colorClass(netMargin, 10, 5));
+    setMetric('r-roi', fP(roi), roi >= 25 ? '✅ Hiệu quả / Efficient' : roi >= 15 ? '⚡ Chấp nhận / OK' : '🔴 Thấp / Low', colorClass(roi, 25, 15));
+    setMetric('r-wc', fU(workingCapUSD), `Kẹt ${tiedDays} ngày / Tied ${tiedDays}d`, workingCapUSD > revUSD * 0.8 ? 'yellow' : 'accent');
+    setMetric('r-unitcost', fU(cogsUnit), grossMargin > 0 ? `Gross EXW margin: ${fP(grossMargin)}` : '—', colorClass(grossMargin, 40, 20));
+
+    // BREAKDOWN
+    setText('b-rev', fU(revUSD));
+    setText('b-cogs', '-' + fU(cogsUSD));
+    setText('b-logi', '-' + fU(logiUSD));
+    setText('b-bank', '-' + fU(bankUSD));
+    setText('b-comm', '-' + fU(commUSD));
+    setText('b-int', '-' + fU(interestUSD));
+    setText('b-over', '-' + fU(overUSD));
+    setText('b-cert', '-' + fU(certUSD));
+    setText('b-profit-sub', fU(netUSD));
+    const pr = document.getElementById('b-profit');
+    pr.textContent = (netUSD >= 0 ? '+' : '') + fU(netUSD) + ' / ' + fP(netMargin);
+    document.getElementById('b-profit-row').className = 'brow ' + (netUSD >= 0 ? 'profit' : 'loss');
+
+    // SENSITIVITY
+    renderSensitivity(revUSD, netUSD, cogsUSD, logiUSD, fx, effectiveIR, tiedDays, workingCapUSD);
+
+    // AI
+    renderAI(netMargin, roi, tiedDays, netUSD, incoterm, payTerm, sellUSD, cogsUnit, workingCapUSD, revUSD);
+  }
+
+  lastResult = { mode, incoterm, revUSD, cogsUSD, logiUSD, bankUSD, commUSD, interestUSD, overUSD, certUSD, netUSD, netVND, netMargin, roi, workingCapUSD, tiedDays, qty, fx, sellUSD, cogsUnit, grossMargin, product: document.getElementById('product-name').value, market: document.getElementById('market').value, payTerm, productItems: productItems.map(r=>({...r})) };
+}
+
+function setMetric(id, val, sub, cls) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = val; el.className = 'metric-value ' + (cls || ''); }
+  const subMap = {
+    'r-revenue': 'r-revenue-vnd',
+    'r-net': 'r-net-vnd',
+    'r-margin': 'r-margin-grade',
+    'r-roi': 'r-roi-grade',
+    'r-wc': 'r-wc-days',
+    'r-unitcost': 'r-gross-margin'
+  };
+  const subId = subMap[id];
+  if (subId) { const s = document.getElementById(subId); if (s) s.textContent = sub; }
+}
+
+function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+function renderSensitivity(rev, net, cogs, logi, fx, ir, days, wc) {
+  const rows = [
+    { label: 'Tỷ giá USD/VND giảm 2% / FX rate -2%', delta: -(rev * 0.02) },
+    { label: 'Cước tàu tăng 20% / Ocean freight +20%', delta: -(n('l-ocean') * 0.2) },
+    { label: 'Giá vốn tăng 5% / COGS +5%', delta: -(cogs * 0.05) },
+    { label: 'Khách thanh toán trễ 30 ngày / Payment delay +30d', delta: -(wc * ir * (30 / 365)) },
+    { label: 'Giảm giá bán 3% / Price discount -3%', delta: -(rev * 0.03) },
+    { label: 'Chi phí phát sinh thêm 2% DT / Extra cost +2% rev', delta: -(rev * 0.02) },
+  ];
+  document.getElementById('sensitivity-rows').innerHTML = rows.map(r => {
+    const newNet = net + r.delta;
+    const newMargin = rev > 0 ? (newNet / rev) * 100 : 0;
+    const c = newNet >= 0 ? 'var(--green)' : 'var(--red)';
+    return `<div class="sens-row"><span>${r.label}</span><span style="color:${c};font-weight:600">${fU(newNet)} (${fP(newMargin)})</span></div>`;
+  }).join('');
+}
+
+function renderAI(margin, roi, days, net, inco, pay, sell, unitCost, wc, rev) {
+  const circle = document.getElementById('ai-score-ring');
+  const verdict = document.getElementById('ai-verdict');
+  const sub = document.getElementById('ai-sub');
+  const items = document.getElementById('ai-items');
+
+  let score = 0;
+  const msgs = [];
+
+  // MARGIN
+  if (margin >= 15) { score += 30; msgs.push({ t: 'good', icon: '✅', txt: `Net Margin ${fP(margin)} — Rất tốt / Excellent. Biên lợi nhuận cao, đơn hàng có độ bền tốt trước rủi ro.` }); }
+  else if (margin >= 10) { score += 25; msgs.push({ t: 'good', icon: '✅', txt: `Net Margin ${fP(margin)} — Tốt / Good. Biên đạt ngưỡng an toàn. Vẫn còn buffer xử lý rủi ro phát sinh.` }); }
+  else if (margin >= 5) { score += 15; msgs.push({ t: 'warn', icon: '⚠️', txt: `Net Margin ${fP(margin)} — Mỏng / Thin. Margin thấp, dễ lỗ nếu có phát sinh chi phí. Cân nhắc: tăng giá bán, giảm chi phí logistics, hoặc yêu cầu deposit cao hơn.` }); }
+  else if (margin >= 0) { score += 0; msgs.push({ t: 'bad', icon: '🔴', txt: `Net Margin ${fP(margin)} — Nguy hiểm / Dangerous. Biên quá thấp — sau khi tính đầy đủ chi phí thực tế sẽ rất dễ lỗ. KHÔNG NÊN NHẬN đơn này với mức giá hiện tại.` }); }
+  else { score -= 10; msgs.push({ t: 'bad', icon: '🔴', txt: `Net Margin ${fP(margin)} — LỖ / LOSS. Đơn hàng đang lỗ ${fU(Math.abs(net))}. Cần tăng giá hoặc dừng đơn này ngay.` }); }
+
+  // ROI
+  if (roi >= 30) { score += 25; msgs.push({ t: 'good', icon: '✅', txt: `ROI ${fP(roi)}/năm — Xuất sắc / Excellent. Vốn hoạt động rất hiệu quả.` }); }
+  else if (roi >= 25) { score += 20; msgs.push({ t: 'good', icon: '✅', txt: `ROI ${fP(roi)}/năm — Tốt / Good. Hiệu quả vốn đạt ngưỡng khuyến nghị (>25%/năm).` }); }
+  else if (roi >= 15) { score += 12; msgs.push({ t: 'warn', icon: '⚡', txt: `ROI ${fP(roi)}/năm — Chấp nhận được / Acceptable. Thấp hơn mức lý tưởng 25%/năm. Tối ưu bằng cách giảm ngày vốn kẹt hoặc tăng deposit.` }); }
+  else { score += 0; msgs.push({ t: 'bad', icon: '🔴', txt: `ROI ${fP(roi)}/năm — Thấp / Low. Vốn bỏ ra nhưng sinh lời ít. Nếu lãi vay > ROI thì đang lỗ thực chất.` }); }
+
+  // TIED DAYS
+  if (days <= 45) { score += 20; msgs.push({ t: 'good', icon: '✅', txt: `Vốn kẹt ${days} ngày — Rất tốt / Excellent. Dòng tiền quay vòng nhanh, giảm áp lực vay vốn.` }); }
+  else if (days <= 60) { score += 15; msgs.push({ t: 'good', icon: '✅', txt: `Vốn kẹt ${days} ngày — Tốt / Good.` }); }
+  else if (days <= 120) { score += 8; msgs.push({ t: 'warn', icon: '⚡', txt: `Vốn kẹt ${days} ngày — Cần chú ý / Watch. Chi phí lãi vay ăn vào margin. Cố gắng đàm phán deposit cao hơn hoặc payment term sớm hơn.` }); }
+  else { score += 0; msgs.push({ t: 'bad', icon: '🔴', txt: `Vốn kẹt ${days} ngày — Dài / Very long. Áp lực dòng tiền lớn. Rủi ro nếu đơn hàng phát sinh vấn đề (delay, claim...).` }); }
+
+  // INCOTERM
+  if (inco === 'DDP') { score -= 15; msgs.push({ t: 'bad', icon: '⚠️', txt: `Incoterm DDP: Rủi ro cao nhất — bạn chịu toàn bộ kể cả thuế NK. Nếu thuế biến động hoặc hàng bị giữ customs, toàn bộ chi phí phát sinh thuộc về bạn. Cần buffer margin ≥ 15%. Đặc biệt lưu ý với thị trường Mỹ (tariff 2025).` }); }
+  else if (inco === 'DAP') { score -= 8; msgs.push({ t: 'warn', icon: '⚠️', txt: `Incoterm DAP/DDU: Rủi ro cao — bạn chịu đến tận địa chỉ khách. Rủi ro last-mile, delay, damage cao hơn. Cần buffer margin ≥ 10%. Mua bảo hiểm cargo đầy đủ.` }); }
+  else if (inco === 'EXW' || inco === 'FOB') { score += 5; msgs.push({ t: 'good', icon: '✅', txt: `Incoterm ${inco}: Rủi ro thấp — trách nhiệm chuyển sớm cho người mua. Phù hợp để tối thiểu hóa rủi ro vận chuyển.` }); }
+
+  // PAYMENT TERM
+  if (pay === 'da') { score -= 15; msgs.push({ t: 'bad', icon: '🔴', txt: `D/A: Rủi ro thanh toán cao nhất — không có bảo đảm từ ngân hàng. Chỉ áp dụng với khách hàng có lịch sử tốt, đã hợp tác lâu năm, có kiểm tra credit limit.` }); }
+  else if (pay === 'tt30after') { score -= 8; msgs.push({ t: 'warn', icon: '⚠️', txt: `T/T 70% sau giao hàng: Rủi ro thanh toán — khách nhận hàng rồi mới trả 70%. Cần xác nhận uy tín khách. Cân nhắc yêu cầu L/C hoặc tăng deposit lên 50%.` }); }
+  else if (pay === 'tt100') { score += 10; msgs.push({ t: 'good', icon: '✅', txt: `T/T 100% trước: An toàn nhất — đã nhận đủ tiền trước khi sản xuất. Không có rủi ro thanh toán, không cần vay vốn.` }); }
+  else if (pay === 'lc_sight') { score += 8; msgs.push({ t: 'good', icon: '✅', txt: `L/C at sight: Được bảo lãnh bởi ngân hàng — an toàn. Nhận tiền ngay khi xuất trình chứng từ hợp lệ. Phí thấp hơn lãi vay.` }); }
+
+  // GROSS MARGIN CHECK
+  if (sell > 0 && unitCost > 0) {
+    const gm = ((sell - unitCost) / sell) * 100;
+    if (gm < 15) msgs.push({ t: 'warn', icon: '⚡', txt: `Gross EXW margin chỉ ${fP(gm)} — Sau khi trừ logistics, tài chính, overhead, margin thực sẽ rất mỏng. Xem lại giá vốn hoặc đàm phán lại giá bán.` });
+  }
+
+  // WC vs REV
+  if (wc > rev * 0.9) { msgs.push({ t: 'warn', icon: '⚡', txt: `Vốn cần ứng ($${wc.toFixed(0)}) gần bằng doanh thu ($${rev.toFixed(0)}) — áp lực vốn lưu động lớn. Cân nhắc yêu cầu deposit cao hơn hoặc chia nhỏ đơn hàng.` }); }
+
+  // RECOMMENDATIONS
+  msgs.push({ t: 'info', icon: '📝', txt: `Lưu ý chuẩn bị cho đơn này: (1) Xác nhận tỷ giá USD/VND thực tế ngày xuất hóa đơn; (2) Cập nhật cước tàu từ forwarder (không quá 7 ngày); (3) Kiểm tra lại HS code và thuế NK tại thị trường đích; (4) Mua bảo hiểm cargo nếu CNF/CIF trở lên.` });
+
+  score = Math.max(0, Math.min(100, score));
+  circle.textContent = score;
+
+  let vcolor, vtext, vsub;
+  if (score >= 70) { vcolor = 'var(--green)'; vtext = '✅ Nên nhận đơn / Proceed'; vsub = `Score ${score}/100 — Chỉ số tài chính ổn định, rủi ro được kiểm soát`; }
+  else if (score >= 50) { vcolor = 'var(--yellow)'; vtext = '⚡ Cân nhắc / Review'; vsub = `Score ${score}/100 — Một số điểm cần xử lý trước khi quyết định`; }
+  else if (score >= 35) { vcolor = '#f97316'; vtext = '⚠️ Cần đàm phán lại / Renegotiate'; vsub = `Score ${score}/100 — Điều kiện hiện tại chưa đủ tốt, cần cải thiện`; }
+  else { vcolor = 'var(--red)'; vtext = '🔴 Không nên nhận / Do not proceed'; vsub = `Score ${score}/100 — Rủi ro cao, có thể dẫn đến lỗ thực tế`; }
+
+  circle.style.borderColor = vcolor;
+  circle.style.color = vcolor;
+  verdict.textContent = vtext;
+  verdict.style.color = vcolor;
+  sub.textContent = vsub;
+
+  items.innerHTML = msgs.map(m => `
+    <div class="ai-item ${m.t}">
+      <span class="ai-icon">${m.icon}</span>
+      <span>${m.txt}</span>
+    </div>`).join('');
+}
+
+// ─── SAVE / LOAD ──────────────────────────────────────
+function saveResult() {
+  const name = document.getElementById('save-name').value.trim();
+  if (!name) { showToast('Vui lòng đặt tên kịch bản / Please enter scenario name', 'error'); return; }
+  if (!lastResult.revUSD) { showToast('Chưa có kết quả / No result to save', 'error'); return; }
+  const scenario = { ...lastResult, name, date: new Date().toLocaleDateString('vi-VN'), id: Date.now() };
+  saved.push(scenario);
+  document.getElementById('saved-badge').textContent = saved.length;
+  document.getElementById('save-name').value = '';
+  showToast('✅ Đã lưu: ' + name, 'success');
+}
+
+function deleteSaved(i) {
+  if (!confirm('Xóa kịch bản này?')) return;
+  saved.splice(i, 1);
+  document.getElementById('saved-badge').textContent = saved.length;
+  renderSaved();
+}
+
+function clearAllSaved() { saved = []; document.getElementById('saved-badge').textContent = 0; renderSaved(); }
+
+function renderSaved() {
+  const list = document.getElementById('saved-list');
+  if (!saved.length) {
+    list.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><p>Chưa có kịch bản / No scenarios saved</p></div>';
+    return;
+  }
+  list.innerHTML = saved.map((s, i) => {
+    const mc = s.netMargin >= 10 ? 'var(--green)' : s.netMargin >= 5 ? 'var(--yellow)' : 'var(--red)';
+    return `<div class="saved-item">
+      <div>
+        <div class="saved-name">${s.name}</div>
+        <div class="saved-meta">${s.product || '—'} · ${s.market || '—'} · ${s.incoterm} · ${s.date}</div>
+        <div class="saved-meta" style="margin-top:2px">
+          Revenue: <strong>${fU(s.revUSD)}</strong> · 
+          Net: <strong style="color:${mc}">${fU(s.netUSD)}</strong> · 
+          Margin: <strong style="color:${mc}">${fP(s.netMargin)}</strong> · 
+          ROI: <strong>${fP(s.roi)}/yr</strong> · 
+          WC: <strong>${fU(s.workingCapUSD)}</strong>
+        </div>
+      </div>
+      <div class="saved-actions">
+        <button class="btn sm" onclick="exportSingleCSV(${i})">CSV</button>
+        <button class="btn danger sm" onclick="deleteSaved(${i})">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderCompare() {
+  const c = document.getElementById('compare-content');
+  if (saved.length < 2) {
+    c.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><p>Lưu ít nhất 2 kịch bản để so sánh<br>Save at least 2 scenarios to compare</p></div>';
+    return;
+  }
+  const metrics = [
+    { label: 'Sản phẩm / Product', fn: s => s.product || '—' },
+    { label: 'Thị trường / Market', fn: s => s.market || '—' },
+    { label: 'Incoterm', fn: s => s.incoterm },
+    { label: 'Payment', fn: s => s.payTerm },
+    { label: 'Số lượng / Qty', fn: s => (s.qty || 0).toLocaleString() },
+    { label: 'Giá bán / Unit price', fn: s => fU(s.sellUSD) },
+    { label: 'Doanh thu / Revenue', fn: s => fU(s.revUSD) },
+    { label: 'Giá vốn / COGS', fn: s => fU(s.cogsUSD) },
+    { label: 'Logistics', fn: s => fU(s.logiUSD) },
+    { label: 'Lãi vay / Interest', fn: s => fU(s.interestUSD) },
+    { label: 'Lợi nhuận / Net profit', fn: s => fU(s.netUSD), color: s => s.netUSD >= 0 ? 'var(--green)' : 'var(--red)' },
+    { label: 'Net Margin', fn: s => fP(s.netMargin), color: s => s.netMargin >= 10 ? 'var(--green)' : s.netMargin >= 5 ? 'var(--yellow)' : 'var(--red)' },
+    { label: 'ROI/năm', fn: s => fP(s.roi), color: s => s.roi >= 25 ? 'var(--green)' : s.roi >= 15 ? 'var(--yellow)' : 'var(--red)' },
+    { label: 'Vốn cần ứng / WC', fn: s => fU(s.workingCapUSD) },
+    { label: 'Ngày vốn kẹt / Tied', fn: s => s.tiedDays + 'd' },
+  ];
+  const headers = ['<th class="row-label">Chỉ số / Metric</th>', ...saved.map(s => `<th>${s.name}<br><span style="font-size:10px;color:var(--text3);font-weight:400">${s.date}</span></th>`)].join('');
+  const rows = metrics.map(m => {
+    const cells = saved.map(s => {
+      const val = m.fn(s);
+      const col = m.color ? m.color(s) : '';
+      return `<td style="${col ? 'color:' + col + ';font-weight:600' : ''}">${val}</td>`;
+    }).join('');
+    return `<tr><td class="row-label">${m.label}</td>${cells}</tr>`;
+  }).join('');
+  c.innerHTML = `<div class="compare-wrap"><table class="compare"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+// ─── EXPORT ───────────────────────────────────────────
+function buildExportData(s) {
+  const prodRows = (s.productItems || []).map((p, i) =>
+    [`  Sản phẩm ${i+1}: ${p.name || '—'}`, `${p.qty || 0} ${p.unit || ''}`, `$${(p.price || 0).toFixed(2)}/đvt`, `Tổng: $${((p.qty||0)*(p.price||0)).toFixed(2)}`]
+  );
+  return [
+    ['PRICING LAB — EXPORT COST CALCULATOR'],
+    ['Ngày tạo / Date', new Date().toLocaleDateString('vi-VN')],
+    [''],
+    ['THÔNG TIN ĐƠN HÀNG / ORDER INFO'],
+    ['Tên kịch bản / Scenario', s.name || '—'],
+    ['Tên đơn hàng / Order', s.product || '—'],
+    ['Thị trường / Market', s.market || '—'],
+    ['Chế độ / Mode', s.mode === 'mfg' ? 'Gia công / Manufacturing' : 'Trading'],
+    ['Incoterm', s.incoterm],
+    ['Phương thức TT / Payment', s.payTerm],
+    ['Tỷ giá / FX rate', s.fx],
+    [''],
+    ['DANH SÁCH SẢN PHẨM / PRODUCT LIST'],
+    ['Sản phẩm', 'Số lượng', 'Đơn giá (USD)', 'Thành tiền'],
+    ...prodRows,
+    [''],
+    ['KẾT QUẢ TÀI CHÍNH / FINANCIAL RESULTS (USD)'],
+    ['Doanh thu / Revenue', s.revUSD?.toFixed(2)],
+    ['Giá vốn EXW / COGS', s.cogsUSD?.toFixed(2)],
+    ['Logistics', s.logiUSD?.toFixed(2)],
+    ['Phí ngân hàng / Bank fee', s.bankUSD?.toFixed(2)],
+    ['Hoa hồng / Commission', s.commUSD?.toFixed(2)],
+    ['Lãi vay / Interest', s.interestUSD?.toFixed(2)],
+    ['Overhead', s.overUSD?.toFixed(2)],
+    ['Kiểm định / Certification', s.certUSD?.toFixed(2)],
+    ['LỢI NHUẬN RÒNG / NET PROFIT', s.netUSD?.toFixed(2)],
+    [''],
+    ['CHỈ SỐ HIỆU SUẤT / KPIs'],
+    ['Net Margin (%)', s.netMargin?.toFixed(2)],
+    ['ROI annualized (%)', s.roi?.toFixed(2)],
+    ['Gross EXW Margin (%)', s.grossMargin?.toFixed(2)],
+    ['Vốn cần ứng / Working capital (USD)', s.workingCapUSD?.toFixed(2)],
+    ['Số ngày vốn kẹt / Tied days', s.tiedDays],
+    [''],
+    ['* Kết quả chỉ mang tính tham khảo. Luôn kiểm tra lại với số liệu thực tế.'],
+  ];
+}
+
+function exportCSV() {
+  if (!lastResult.revUSD) { showToast('Chưa có kết quả / No result', 'error'); return; }
+  const data = buildExportData({ ...lastResult, name: document.getElementById('save-name').value || 'Export' });
+  downloadCSV(data, 'pricing-lab-' + (lastResult.product || 'export'));
+}
+
+function exportSingleCSV(i) {
+  const data = buildExportData(saved[i]);
+  downloadCSV(data, 'pricing-lab-' + saved[i].name.replace(/\s+/g, '-'));
+}
+
+function exportCompareCSV() {
+  if (saved.length < 2) { showToast('Cần ít nhất 2 kịch bản / Need 2+ scenarios', 'error'); return; }
+  const headers = ['Chỉ số', ...saved.map(s => s.name)];
+  const rows = [
+    headers,
+    ['Sản phẩm', ...saved.map(s => s.product || '—')],
+    ['Thị trường', ...saved.map(s => s.market || '—')],
+    ['Incoterm', ...saved.map(s => s.incoterm)],
+    ['Doanh thu (USD)', ...saved.map(s => s.revUSD?.toFixed(2))],
+    ['Net Profit (USD)', ...saved.map(s => s.netUSD?.toFixed(2))],
+    ['Net Margin (%)', ...saved.map(s => s.netMargin?.toFixed(2))],
+    ['ROI/năm (%)', ...saved.map(s => s.roi?.toFixed(2))],
+    ['Working Capital (USD)', ...saved.map(s => s.workingCapUSD?.toFixed(2))],
+    ['Ngày vốn kẹt', ...saved.map(s => s.tiedDays)],
+  ];
+  downloadCSV(rows, 'pricing-lab-compare');
+}
+
+function downloadCSV(data, filename) {
+  const csv = data.map(row => row.map(cell => '"' + String(cell || '').replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename + '.csv';
+  a.click();
+  showToast('✅ Đã xuất CSV / CSV exported', 'success');
+}
+
+function resetAll() {
+  if (!confirm('Reset toàn bộ? / Reset all?')) return;
+  document.querySelectorAll('input[type="number"], input[type="text"], input[type="date"]').forEach(el => {
+    if (el.id === 'fx-rate') el.value = 25500;
+    else if (el.id === 'interest-rate') el.value = 9;
+    else if (el.id === 'tied-days') el.value = 90;
+    else if (el.id === 'overhead-pct') el.value = 3;
+    else if (el.id === 'bank-fee') el.value = 0.2;
+    else if (el.id === 'deposit-pct') el.value = 30;
+    else el.value = '';
+  });
+  cogsItems = DEFAULT_COGS.map(r => ({ ...r }));
+  productItems = [{ name: '', qty: 0, unit: 'cái/pcs', price: 0 }];
+  renderCogsRows();
+  renderProductRows();
+  calc();
+}
+
+// ─── TOAST ────────────────────────────────────────────
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+// ─── START ────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
