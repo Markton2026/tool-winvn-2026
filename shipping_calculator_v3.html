@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Shipping Cost Calculator</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#1a56db;--blue-dk:#1648c5;--blue-lt:#e6f1fb;
+  --border:#e5e7eb;--r:8px;--r-lg:12px;
+  --text:#1f2937;--muted:#6b7280;--light:#9ca3af;
+  --bg:#fff;--bg2:#f9fafb;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--text);background:#f1f5f9;min-height:100vh}
+.app{max-width:1020px;margin:0 auto;padding:18px 14px}
+
+/* HEADER */
+.hdr{background:linear-gradient(135deg,#0f2f6e,#1a56db);color:#fff;border-radius:var(--r-lg);padding:14px 22px;margin-bottom:12px;display:flex;align-items:center;gap:14px}
+.hdr-logo{width:58px;height:58px;border-radius:50%;background:#fff;padding:3px;flex-shrink:0;box-shadow:0 0 0 3px rgba(255,255,255,.3)}
+.hdr-logo img{width:100%;height:100%;object-fit:contain;border-radius:50%;display:block}
+.hdr h1{font-size:17px;font-weight:700;margin-bottom:2px}
+.hdr p{font-size:11px;opacity:.8}
+.hdr-r{margin-left:auto;text-align:right;font-size:11px;opacity:.75}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:4px}
+.tab-btn{flex:1;padding:8px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);border-radius:6px;font-family:inherit;transition:all .15s}
+.tab-btn.active{background:var(--blue);color:#fff}
+
+/* SECTION */
+.sec{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-lg);padding:13px 17px;margin-bottom:10px}
+.sec-t{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.sec-t::after{content:'';flex:1;height:1px;background:var(--border)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.fld{display:flex;flex-direction:column;gap:3px}
+.fld label{font-size:11px;color:var(--muted);font-weight:500}
+.fld input,.fld select{padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit;font-size:13px}
+.fld input:focus,.fld select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,219,.1)}
+.fld .hint{font-size:10px;color:var(--light)}
+
+/* TRANSPORT */
+.tr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tr-btn{padding:9px 6px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);font-family:inherit;text-align:center;transition:all .15s;line-height:1.4}
+.tr-btn.active{background:var(--blue-lt);border-color:var(--blue);color:var(--blue)}
+.tr-btn span{display:block;font-size:10px;font-weight:400;margin-top:2px;opacity:.7}
+
+/* TABLES */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:6px 7px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;background:var(--bg2)}
+td{padding:2px 2px;vertical-align:middle}
+td input,td select{width:100%;padding:5px 6px;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12px}
+td input:focus,td select:focus{outline:none;border-color:var(--blue)}
+.tf-row td{padding:6px 7px;font-weight:600;font-size:11px;background:var(--bg2)}
+
+/* TOOLTIP */
+.tip-w{position:relative;display:inline-flex;align-items:center;vertical-align:middle}
+.tip-ic{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#e5e7eb;color:#6b7280;font-size:9px;font-weight:700;cursor:pointer;flex-shrink:0;margin-left:4px;border:none;font-family:inherit;line-height:1;padding:0}
+.tip-ic:hover{background:var(--blue);color:#fff}
+.tip-box{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;font-size:11px;padding:7px 10px;border-radius:6px;width:230px;line-height:1.5;z-index:9999;white-space:normal;box-shadow:0 4px 14px rgba(0,0,0,.3);pointer-events:none}
+.tip-box::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1f2937}
+.tip-w:hover .tip-box{display:block}
+.name-cell{display:flex;align-items:center;gap:2px}
+.name-cell input{flex:1;min-width:0}
+
+/* VAT select */
+.vat-s{font-size:11px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text);font-family:inherit;width:62px}
+
+/* BUTTONS */
+.btn-add{display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px dashed #9ca3af;border-radius:var(--r);background:none;cursor:pointer;font-size:12px;color:var(--muted);font-family:inherit;margin-top:7px;transition:all .15s}
+.btn-add:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-lt)}
+.btn-del{padding:3px 6px;border:none;background:none;cursor:pointer;color:var(--light);font-size:13px;border-radius:4px}
+.btn-del:hover{color:#dc2626;background:#fef2f2}
+.btn-p{padding:8px 18px;border:none;background:var(--blue);color:#fff;border-radius:var(--r);cursor:pointer;font-size:13px;font-weight:600;font-family:inherit}
+.btn-p:hover{background:var(--blue-dk)}
+.btn-s{padding:8px 13px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:var(--r);cursor:pointer;font-size:13px;font-family:inherit}
+.btn-xl{padding:8px 13px;border:none;background:#217346;color:#fff;border-radius:var(--r);cursor:pointer;font-size:13px;font-family:inherit;font-weight:500}
+.btn-pdf{padding:8px 13px;border:none;background:#dc2626;color:#fff;border-radius:var(--r);cursor:pointer;font-size:13px;font-family:inherit;font-weight:500}
+
+/* LIVE BOX */
+.live-box{background:var(--bg);border:2px solid var(--blue);border-radius:var(--r-lg);padding:13px 17px;margin-bottom:10px;position:sticky;top:6px;z-index:20;box-shadow:0 6px 24px rgba(26,86,219,.13)}
+.live-badge{display:inline-flex;align-items:center;gap:5px;background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;margin-bottom:9px}
+.live-dot{width:6px;height:6px;background:#4ade80;border-radius:50%;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.res-main{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:8px}
+.res-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px 13px;text-align:center}
+.res-card.hi{background:var(--blue-lt);border-color:var(--blue)}
+.res-lbl{font-size:10px;color:var(--muted);margin-bottom:2px;font-weight:500}
+.res-val{font-size:20px;font-weight:700;color:var(--text)}
+.res-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.res-sec{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.res-sm{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;text-align:center}
+.res-sm.hi{background:var(--blue-lt);border-color:var(--blue)}
+.res-sm-l{font-size:10px;color:var(--muted);margin-bottom:2px}
+.res-sm-v{font-size:14px;font-weight:600}
+.no-data{color:var(--light);font-style:italic}
+.detail-toggle{width:100%;background:none;border:1px solid var(--border);border-radius:var(--r);padding:5px;font-size:11px;color:var(--muted);cursor:pointer;font-family:inherit;margin-top:8px}
+.detail-body{display:none;margin-top:10px}
+.detail-body.open{display:block}
+
+/* SUMMARY TABLE */
+.sum-t{width:100%;border-collapse:collapse;font-size:12px}
+.sum-t tr{border-bottom:1px solid #f0f0f0}
+.sum-t td{padding:5px 7px}
+.sum-t td:nth-child(2),.sum-t td:nth-child(3){text-align:right;white-space:nowrap}
+.sum-t .bold td{font-weight:700;background:#eff6ff}
+.sum-t .sep td{background:#f8fafc;font-size:10px;color:var(--muted);font-weight:600;padding:3px 7px}
+
+/* NOTES */
+.info-note{font-size:11px;color:var(--muted);padding:7px 11px;background:#fef3c7;border-radius:var(--r);margin-top:7px;border-left:3px solid #f59e0b;line-height:1.6}
+.vat-note{font-size:11px;color:#92400e;padding:7px 11px;background:#fef3c7;border-radius:var(--r);margin-top:7px;border-left:3px solid #f59e0b;line-height:1.6}
+
+/* PARAMS */
+.params-sec{display:none}
+.params-sec.active{display:block}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+
+/* SAVED */
+.saved-item{display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:7px;background:var(--bg);flex-wrap:wrap}
+.saved-name{flex:1;font-weight:600;font-size:13px;min-width:140px}
+.saved-name small{display:block;font-weight:400;color:var(--muted);font-size:11px;margin-top:1px}
+.saved-vals{display:flex;gap:12px;font-size:12px;flex-wrap:wrap}
+.saved-vals b{color:var(--blue)}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase}
+.badge-fcl{background:#dbeafe;color:#1e40af}
+.badge-lcl{background:#dcfce7;color:#166534}
+.badge-air{background:#fef3c7;color:#92400e}
+.empty-state{text-align:center;padding:44px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-logo"><img src="data:image/png;base64,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" alt="Logo"></div>
+  <div>
+    <h1>Shipping Cost Calculator</h1>
+    <p>Bảng tính giá EXW → FOB → CNF → CIF · FCL / LCL / Air Express / Air Cargo</p>
+  </div>
+  <div class="hdr-r"><div id="clock"></div><div style="opacity:.6;margin-top:3px">v3.0</div></div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('calc',this)">📊 Nhập liệu & Tính toán</button>
+  <button class="tab-btn" onclick="switchTab('saved',this)">💾 Kết quả đã lưu (<span id="saved-count">0</span>)</button>
+</div>
+
+<!-- TAB CALC -->
+<div id="tab-calc">
+
+  <!-- LIVE RESULTS -->
+  <div class="live-box">
+    <div class="live-badge"><span class="live-dot"></span> LIVE — Cập nhật tức thì</div>
+    <div class="res-main">
+      <div class="res-card">
+        <div class="res-lbl">FOB (USD / cái)</div>
+        <div class="res-val" id="r-fob-usd"><span class="no-data">—</span></div>
+        <div class="res-sub" id="r-fob-vnd">Điền thông tin để tính</div>
+      </div>
+      <div class="res-card">
+        <div class="res-lbl">CNF (USD / cái)</div>
+        <div class="res-val" id="r-cnf-usd"><span class="no-data">—</span></div>
+        <div class="res-sub" id="r-cnf-vnd"></div>
+      </div>
+      <div class="res-card hi">
+        <div class="res-lbl">CIF (USD / cái)</div>
+        <div class="res-val" id="r-cif-usd"><span class="no-data">—</span></div>
+        <div class="res-sub" id="r-cif-vnd"></div>
+      </div>
+    </div>
+    <div class="res-sec">
+      <div class="res-sm"><div class="res-sm-l">FOB / kg</div><div class="res-sm-v" id="r-fob-kg">—</div></div>
+      <div class="res-sm"><div class="res-sm-l">CIF / CBM</div><div class="res-sm-v" id="r-cif-cbm">—</div></div>
+      <div class="res-sm"><div class="res-sm-l">Tổng phí logistics (có VAT)</div><div class="res-sm-v" id="r-total-log">—</div></div>
+      <div class="res-sm hi"><div class="res-sm-l">Tổng CIF lô hàng</div><div class="res-sm-v" id="r-total-cif">—</div></div>
+    </div>
+    <button class="detail-toggle" onclick="toggleDetail(this)">▼ Xem chi tiết breakdown</button>
+    <div class="detail-body" id="detail-body">
+      <table class="sum-t" id="sum-table" style="margin-top:10px"></table>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn-p" onclick="saveResult()" style="font-size:12px;padding:6px 14px">💾 Lưu kết quả</button>
+        <button class="btn-xl" onclick="exportExcel()" style="font-size:12px;padding:6px 12px">📊 Xuất Excel</button>
+        <button class="btn-pdf" onclick="exportPDF()" style="font-size:12px;padding:6px 12px">📄 Xuất PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRANSPORT -->
+  <div class="sec">
+    <div class="sec-t">Phương thức vận chuyển — Transport Mode</div>
+    <div class="tr-grid">
+      <button class="tr-btn active" onclick="setTransport('fcl',this)">🚢 FCL<span>Container nguyên</span></button>
+      <button class="tr-btn" onclick="setTransport('lcl',this)">📦 LCL<span>Hàng lẻ / CBM</span></button>
+      <button class="tr-btn" onclick="setTransport('air_express',this)">✈️ Air Express<span>Hàng không nhanh</span></button>
+      <button class="tr-btn" onclick="setTransport('air_cargo',this)">🛫 Air Cargo<span>Hàng không thường</span></button>
+    </div>
+  </div>
+
+  <!-- GENERAL PARAMS -->
+  <div class="sec">
+    <div class="sec-t">Thông số chung — General Parameters</div>
+    <div class="g4">
+      <div class="fld">
+        <label>Tỷ giá USD/VND</label>
+        <input type="number" id="exchange_rate" value="26000" oninput="renderCosts();recalc()">
+      </div>
+      <div class="fld">
+        <label>Bảo hiểm (%) — Insurance</label>
+        <input type="number" id="insurance_pct" value="0.15" step="0.01" oninput="recalc()">
+        <span class="hint">CIF = CNF ÷ (1 − ins%)</span>
+      </div>
+      <div class="fld">
+        <label>Thuế xuất khẩu (%) — Export tax</label>
+        <input type="number" id="export_tax_pct" value="0" step="0.1" oninput="recalc()">
+        <span class="hint">FOB = (EXW+phí) ÷ (1 − tax%)</span>
+      </div>
+      <div class="fld">
+        <label>Tên lô hàng / Shipment</label>
+        <input type="text" id="shipment_name" placeholder="VD: Đơn tháng 6">
+      </div>
+    </div>
+  </div>
+
+  <!-- FCL PARAMS -->
+  <div class="sec params-sec active" id="ps-fcl">
+    <div class="sec-t">Thông số FCL — Container Details</div>
+    <div class="g2">
+      <div class="fld">
+        <label>Loại container</label>
+        <select id="fcl_cont_type" onchange="recalc()">
+          <option value="20">Container 20ft</option>
+          <option value="40" selected>Container 40ft</option>
+          <option value="40hc">Container 40HC</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label>Cước biển (USD/cont) — Ocean freight</label>
+        <input type="number" id="fcl_freight" value="2800" oninput="recalc()">
+        <span class="hint">Số SP tự lấy từ bảng hàng hóa bên dưới (k = cước ÷ tổng SP)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- LCL PARAMS -->
+  <div class="sec params-sec" id="ps-lcl">
+    <div class="sec-t">Thông số LCL — Less than Container Load</div>
+    <div class="g2">
+      <div class="fld">
+        <label>Cước biển (USD/shipment)</label>
+        <input type="number" id="lcl_freight" value="800" oninput="recalc()">
+      </div>
+      <div class="fld">
+        <label>Tổng CBM lô hàng</label>
+        <input type="number" id="lcl_cbm" value="2" step="0.1" oninput="recalc()">
+        <span class="hint">Số SP tự lấy từ bảng hàng hóa bên dưới (k = cước ÷ tổng SP)</span>
+      </div>
+    </div>
+    <div class="info-note">Cước/sản phẩm = Tổng cước biển ÷ Tổng số sản phẩm (từ bảng hàng hóa)</div>
+  </div>
+
+  <!-- AIR EXPRESS PARAMS -->
+  <div class="sec params-sec" id="ps-air_express">
+    <div class="sec-t">Thông số Air Express — Hàng không nhanh</div>
+    <div class="g3">
+      <div class="fld">
+        <label>Cước Air (USD/kg chargeable)</label>
+        <input type="number" id="ae_rate" value="4.5" step="0.1" oninput="recalc()">
+      </div>
+      <div class="fld">
+        <label>Volumetric divisor (cm³/kg)</label>
+        <select id="ae_vol_div" onchange="recalc()">
+          <option value="5000">5000 — IATA standard</option>
+          <option value="6000" selected>6000 — phổ biến</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label>Phụ phí nhiên liệu FSC (%)</label>
+        <input type="number" id="ae_fuel" value="20" oninput="recalc()">
+      </div>
+    </div>
+    <div class="info-note">Chargeable weight = max(KL thực, KL thể tích). Vol.weight = (D×R×C cm³) ÷ divisor. Tổng KL tự tính từ bảng hàng hóa.</div>
+  </div>
+
+  <!-- AIR CARGO PARAMS -->
+  <div class="sec params-sec" id="ps-air_cargo">
+    <div class="sec-t">Thông số Air Cargo — Hàng không thường</div>
+    <div class="g3">
+      <div class="fld">
+        <label>Cước Air (USD/kg chargeable)</label>
+        <input type="number" id="ac_rate" value="2.5" step="0.1" oninput="recalc()">
+      </div>
+      <div class="fld">
+        <label>Volumetric divisor (cm³/kg)</label>
+        <select id="ac_vol_div" onchange="recalc()">
+          <option value="5000">5000 — IATA</option>
+          <option value="6000" selected>6000 — phổ biến</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label>Phụ phí nhiên liệu FSC (%)</label>
+        <input type="number" id="ac_fuel" value="15" oninput="recalc()">
+        <span class="hint">Số SP tự lấy từ bảng hàng hóa bên dưới (k = cước ÷ tổng SP)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCTS -->
+  <div class="sec">
+    <div class="sec-t">Danh sách hàng hóa — Product List</div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th style="min-width:120px">Tên hàng</th>
+          <th style="min-width:45px">ĐVT</th>
+          <th style="min-width:78px">Số lượng</th>
+          <th style="min-width:88px">Giá EXW (USD)</th>
+          <th style="min-width:68px">KL/cái (kg)</th>
+          <th style="min-width:53px">D (cm)</th>
+          <th style="min-width:53px">R (cm)</th>
+          <th style="min-width:53px">C (cm)</th>
+          <th style="min-width:72px">Tổng CBM</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="prod-rows"></tbody>
+        <tfoot><tr class="tf-row">
+          <td colspan="2" style="color:var(--muted)">TỔNG</td>
+          <td id="t-qty">—</td>
+          <td id="t-exw">—</td>
+          <td id="t-weight">—</td>
+          <td colspan="3" style="color:var(--muted)">Tổng CBM:</td>
+          <td id="t-cbm">—</td>
+          <td></td>
+        </tr></tfoot>
+      </table>
+    </div>
+    <button class="btn-add" onclick="addProduct()">＋ Thêm sản phẩm</button>
+  </div>
+
+  <!-- LOGISTICS COSTS -->
+  <div class="sec">
+    <div class="sec-t">Chi phí logistics xuất khẩu — Logistics Costs</div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th style="min-width:180px">Hạng mục <span style="font-weight:400;opacity:.6">(? = ghi chú)</span></th>
+          <th style="min-width:92px">USD</th>
+          <th style="min-width:108px">VND</th>
+          <th style="min-width:93px">Đơn vị</th>
+          <th style="min-width:62px">VAT</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="cost-rows"></tbody>
+      </table>
+    </div>
+    <button class="btn-add" onclick="addCostRow()">＋ Thêm chi phí</button>
+    <div class="vat-note">
+      📋 <b>Công thức:</b> Mỗi dòng × (1+VAT%) → Tổng phí có VAT (c) → Phí/SP (d=c÷SL) → Cộng EXW → FOB = (EXW+phí) ÷ (1−thuế XK%) → CNF = FOB + cước/SP → CIF = CNF ÷ (1−bảo hiểm%)<br>
+      <b>VAT:</b> Phí hãng tàu/hàng không = 0% &nbsp;|&nbsp; Phí dịch vụ nội địa = 8%
+    </div>
+  </div>
+
+  <!-- EXTRA OPTIONS -->
+  <div class="sec">
+    <div class="sec-t">Tùy chọn thêm</div>
+    <div class="g3">
+      <div class="fld">
+        <label>Phí đóng pallet (USD/cont) — nếu có</label>
+        <input type="number" id="pallet_cost" value="0" oninput="recalc()">
+      </div>
+      <div class="fld">
+        <label>Ghi chú / Tuyến hàng</label>
+        <input type="text" id="note_extra" placeholder="VD: Cát Lái → Rotterdam">
+      </div>
+      <div class="fld">
+        <label>VAT mặc định khi thêm phí mới (%)</label>
+        <input type="number" id="default_vat" value="8" step="1" oninput="recalc()">
+        <span class="hint">Mỗi dòng phí có VAT riêng trong bảng trên</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-s" onclick="resetForm()">↺ Làm lại</button>
+    <button class="btn-xl" onclick="exportExcel()">📊 Xuất Excel</button>
+    <button class="btn-pdf" onclick="exportPDF()">📄 Xuất PDF</button>
+  </div>
+
+</div><!-- end tab-calc -->
+
+<!-- TAB SAVED -->
+<div id="tab-saved" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <span style="font-size:13px;color:var(--muted)">Kết quả đã lưu trong phiên</span>
+    <div style="display:flex;gap:8px">
+      <button class="btn-xl" onclick="exportAllExcel()" style="font-size:12px;padding:6px 12px">📊 Xuất tất cả Excel</button>
+      <button class="btn-s" onclick="clearSaved()" style="font-size:12px;padding:6px 12px">🗑 Xóa tất cả</button>
+    </div>
+  </div>
+  <div id="saved-list"></div>
+  <div id="saved-empty" class="empty-state"><div style="font-size:38px">📭</div><p style="margin-top:8px;font-size:13px">Chưa có kết quả nào. Điền đủ thông tin rồi bấm "Lưu kết quả".</p></div>
+</div>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onerror="window._xlsxFail=true"></script>
+<script>
+'use strict';
+
+// ── STATE ──
+let transport = 'fcl';
+let products  = [];
+let costs     = [];
+let saved     = [];
+let lastR     = null;
+
+const TL = {fcl:'FCL — Container nguyên', lcl:'LCL — Hàng lẻ', air_express:'Air Express', air_cargo:'Air Cargo'};
+const BC = {fcl:'badge-fcl', lcl:'badge-lcl', air_express:'badge-air', air_cargo:'badge-air'};
+const BL = {fcl:'FCL', lcl:'LCL', air_express:'Air Express', air_cargo:'Air Cargo'};
+
+// ── DEFAULT COSTS ──
+// vat: 0 = phí hãng tàu/hàng không, 8 = phí dịch vụ nội địa
+const DC = {
+  fcl:[
+    {name:'Phí THC',                 sub:'Terminal Handling Charge — Phí xếp dỡ container tại cảng. Thu cho hoạt động di chuyển container từ bãi lên tàu (hàng xuất) hoặc tàu xuống bãi (hàng nhập).',           usd:210,  unit:'/cont',    vat:0},
+    {name:'Phí Chì (Seal)',          sub:'Phí mua niêm phong chì container sau khi đóng hàng. Đảm bảo tính nguyên vẹn hàng hóa trong suốt hành trình. Theo thông lệ quốc tế.',                                    usd:10,   unit:'/cont',    vat:0},
+    {name:'Bill of Lading (B/L)',    sub:'Phí phát hành vận đơn — chứng từ quan trọng nhất đường biển. Hãng tàu xác nhận đã nhận hàng. Thể hiện shipper, consignee, cảng đi/đến, loại hàng, số lượng.',           usd:40,   unit:'/lô',      vat:0},
+    {name:'ENS/AMS/ACI/AFR',        sub:'Khai báo hàng hóa trước khi đến: ENS (EU), AMS (Mỹ/Canada), ACI (Canada), AFR (Nhật), AFS (Trung Quốc). Bắt buộc tùy thị trường đến.',                                  usd:35,   unit:'/lô',      vat:0},
+    {name:'Phí nâng hạ (LOLO)',      sub:'Lift On/Lift Off — phí nâng container từ bãi lên xe kéo hoặc hạ từ xe xuống bãi tại cảng. Khác với THC: THC là phí cảng, LOLO là phí thiết bị nâng hạ.',               usd:115,  unit:'/cont',    vat:0},
+    {name:'Phí cơ sở hạ tầng',      sub:'Phí sử dụng kết cấu hạ tầng cảng biển. Chỉ áp dụng tại một số cảng miền Bắc. Miền Nam (Cát Lái, VICT...) thường không có phí này.',                                    usd:20,   unit:'/lô',      vat:8},
+    {name:'Kiểm hoá',                sub:'Hải quan kiểm tra thực tế hàng hóa khi phân luồng đỏ — mở container xem có đúng khai báo không. Phát sinh không thường xuyên, tùy ngành hàng.',                         usd:61,   unit:'/cont',    vat:8},
+    {name:'Thủ tục hải quan',        sub:'Phí dịch vụ forwarder/đại lý hải quan làm tờ khai xuất khẩu. Bao gồm khai báo điện tử, xử lý chứng từ, theo dõi thông quan.',                                           usd:45,   unit:'/cont',    vat:8},
+    {name:'Hun trùng / Phyto',       sub:'Fumigation (hun trùng) và Phytosanitary (kiểm dịch thực vật). Bắt buộc với hàng gỗ và nông sản. Thị trường Úc yêu cầu FUMI riêng khoảng 1.5–1.8 triệu/cont.',         usd:70,   unit:'/cont',    vat:8},
+    {name:'Phí C/O',                 sub:'Certificate of Origin — Giấy chứng nhận xuất xứ hàng hóa. Giúp người mua hưởng ưu đãi thuế nhập khẩu tại nước có FTA với Việt Nam. Do Bộ Công Thương hoặc VCCI cấp.',  usd:45,   unit:'/lô',      vat:8},
+    {name:'Vận tải nội địa',         sub:'Phí thuê xe đầu kéo chở container từ kho/nhà máy đến cảng xuất. Giá phụ thuộc khoảng cách, loại cont, thời điểm. Tính theo chuyến.',                                     usd:170,  unit:'/cont',    vat:8},
+    {name:'Dự trù phát sinh',        sub:'Dự trù cho các chi phí phát sinh ngoài dự kiến. Đặc biệt cần thiết với nhà cung cấp lần đầu xuất khẩu. Thường 1–2% tổng phí logistics.',                                 usd:81,   unit:'/cont',    vat:8},
+  ],
+  lcl:[
+    {name:'Phí THC (local charge)',  sub:'Terminal Handling Charge — Phí xếp dỡ hàng lẻ tại cảng, tính theo CBM.',                                                                                                  usd:7,    unit:'/cbm',     vat:0},
+    {name:'Bill of Lading (B/L)',    sub:'Phí phát hành vận đơn cho lô hàng lẻ. Thường qua NVOCC (forwarder gom hàng).',                                                                                            usd:40,   unit:'/lô',      vat:0},
+    {name:'CFS',                     sub:'Container Freight Station — Phí đóng gói, sắp xếp hàng lẻ vào container tại kho CFS. Tính theo CBM.',                                                                    usd:10,   unit:'/cbm',     vat:0},
+    {name:'LSS',                     sub:'Low Sulphur Surcharge — Phụ phí nhiên liệu ít lưu huỳnh theo quy định IMO 2020. Áp dụng toàn cầu.',                                                                       usd:5,    unit:'/cbm',     vat:0},
+    {name:'ENS/AMS/ACI',            sub:'Khai báo hàng hóa trước khi đến: ENS (EU), AMS (Mỹ/Canada), ACI (Canada). Bắt buộc tùy thị trường đến.',                                                                 usd:35,   unit:'/lô',      vat:0},
+    {name:'EFS',                     sub:'Emergency Fuel Surcharge — Phụ phí nhiên liệu khẩn cấp khi giá dầu biến động mạnh.',                                                                                      usd:5,    unit:'/cbm',     vat:0},
+    {name:'RR',                      sub:'Rate Restoration — Phụ phí phục hồi giá cước, thường áp dụng cho hàng nội Á khi thị trường cước thấp.',                                                                   usd:20,   unit:'/cbm',     vat:0},
+    {name:'Phí cơ sở hạ tầng',      sub:'Phí kết cấu hạ tầng cảng biển. Chỉ áp dụng tại một số cảng miền Bắc.',                                                                                                    usd:0.6,  unit:'/cbm',     vat:8},
+    {name:'Kiểm hoá',                sub:'Hải quan kiểm tra thực tế hàng hóa khi vào luồng đỏ. Phát sinh không thường xuyên.',                                                                                      usd:61,   unit:'/lô',      vat:8},
+    {name:'Thủ tục hải quan',        sub:'Phí dịch vụ khai báo hải quan xuất khẩu.',                                                                                                                                usd:45,   unit:'/lô',      vat:8},
+    {name:'Hun trùng / Phyto',       sub:'Kiểm dịch thực vật — bắt buộc với hàng gỗ và nông sản.',                                                                                                                 usd:50,   unit:'/lô',      vat:8},
+    {name:'Phí C/O',                 sub:'Certificate of Origin — Giấy chứng nhận xuất xứ. Do Bộ Công Thương hoặc VCCI cấp.',                                                                                       usd:45,   unit:'/lô',      vat:8},
+    {name:'Vận tải nội địa',         sub:'Phí vận chuyển hàng từ kho ra cảng. Tính theo CBM hoặc chuyến.',                                                                                                          usd:85,   unit:'/cbm',     vat:8},
+    {name:'Dự trù phát sinh',        sub:'Dự trù chi phí phát sinh ngoài dự kiến.',                                                                                                                                 usd:30,   unit:'/lô',      vat:8},
+  ],
+  air_express:[
+    // Cước Air Freight đã được tính riêng từ params (ae_rate × chgKg × (1+FSC%))
+    // Bảng này chỉ chứa các phí phụ ngoài cước
+    {name:'Vận tải nội địa',  sub:'Phí vận chuyển hàng từ kho/nhà máy ra sân bay. Phụ thuộc khoảng cách và trọng lượng lô hàng.',  usd:80, unit:'/shipment', vat:8},
+    {name:'Dự trù phát sinh', sub:'Dự trù chi phí phát sinh ngoài dự kiến. Khoảng 5–10% tổng phí air.',                             usd:30, unit:'/shipment', vat:8},
+  ],
+  air_cargo:[
+    // Cước Air Freight đã được tính riêng từ params (ac_rate × chgKg × (1+FSC%))
+    // Bảng này chỉ chứa các phí phụ ngoài cước
+    {name:'Phí THC sân bay',         sub:'Terminal Handling Charge tại sân bay — phí xếp dỡ hàng hóa tại cargo terminal.',                                                                                           usd:0.06, unit:'/kg',      vat:0},
+    {name:'Air Waybill (AWB)',        sub:'Vận đơn hàng không — hợp đồng vận chuyển giữa shipper và hãng bay.',                                                                                                       usd:40,   unit:'/shipment',vat:0},
+    {name:'X-Ray',                    sub:'Soi chiếu kiểm tra an ninh hàng hóa. Bắt buộc với hàng air.',                                                                                                             usd:0.02, unit:'/kg',      vat:0},
+    {name:'TCS/SCSC',                 sub:'Terminal/Security Charge — Phụ phí an ninh, thu tại sân bay xuất.',                                                                                                       usd:0.06, unit:'/kg',      vat:0},
+    {name:'FWB/FHL',                  sub:'Phí truyền dữ liệu vận đơn và danh sách hàng hóa điện tử theo chuẩn IATA.',                                                                                              usd:10,   unit:'/shipment',vat:0},
+    {name:'AMS/ENS/AFR/AFS/ACI',    sub:'Khai báo hàng hóa trước khi đến: AMS (Mỹ), ENS (EU), AFR (Nhật), AFS (Trung Quốc), ACI (Canada). Bắt buộc tùy thị trường.',                                              usd:15,   unit:'/shipment',vat:0},
+    {name:'Handling Fee',             sub:'Phí xử lý hồ sơ và điều phối hàng tại kho hàng không, bao gồm tiếp nhận, sắp xếp và lên ULD pallet.',                                                                   usd:10,   unit:'/cbm',     vat:8},
+    {name:'Kiểm hoá',                 sub:'Hải quan kiểm tra thực tế khi hàng vào luồng đỏ.',                                                                                                                       usd:61,   unit:'/shipment',vat:8},
+    {name:'Thủ tục hải quan',         sub:'Phí dịch vụ khai báo hải quan xuất khẩu.',                                                                                                                               usd:45,   unit:'/shipment',vat:8},
+    {name:'Hun trùng / Phyto',        sub:'Kiểm dịch thực vật — bắt buộc với hàng gỗ, nông sản.',                                                                                                                  usd:50,   unit:'/shipment',vat:8},
+    {name:'Phí C/O',                  sub:'Certificate of Origin — giúp người mua hưởng ưu đãi thuế FTA.',                                                                                                          usd:45,   unit:'/shipment',vat:8},
+    {name:'Vận tải nội địa',          sub:'Phí vận chuyển hàng từ kho ra sân bay.',                                                                                                                                 usd:70,   unit:'/cbm',     vat:8},
+    {name:'Dự trù phát sinh',         sub:'Dự trù chi phí phát sinh ngoài dự kiến.',                                                                                                                                usd:30,   unit:'/shipment',vat:8},
+  ]
+};
+
+// ── TRANSPORT ──
+function setTransport(t, el) {
+  transport = t;
+  document.querySelectorAll('.tr-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.params-sec').forEach(s => s.classList.remove('active'));
+  document.getElementById('ps-' + t).classList.add('active');
+  costs = DC[t].map(c => ({...c}));
+  renderCosts();
+  recalc();
+}
+
+// ── PRODUCTS ──
+function addProduct() {
+  products.push({name:'', unit:'Cái', qty:1000, exw:0.5, weight:0.2, d:10, r:10, h:10});
+  renderProducts();
+}
+function removeProduct(i) { products.splice(i, 1); renderProducts(); recalc(); }
+
+function renderProducts() {
+  document.getElementById('prod-rows').innerHTML = products.map((p, i) => `
+    <tr>
+      <td><input value="${esc(p.name)}" oninput="products[${i}].name=this.value" placeholder="Tên SP"></td>
+      <td><input value="${esc(p.unit)}" oninput="products[${i}].unit=this.value" style="width:44px"></td>
+      <td><input type="number" value="${p.qty}"    oninput="products[${i}].qty=   +this.value||0; updTotals(); recalc()"></td>
+      <td><input type="number" value="${p.exw}"    step="0.0001" oninput="products[${i}].exw=+this.value||0; recalc()"></td>
+      <td><input type="number" value="${p.weight}" step="0.001"  oninput="products[${i}].weight=+this.value||0; updTotals(); recalc()"></td>
+      <td><input type="number" value="${p.d}" oninput="products[${i}].d=+this.value||0; updRow(${i}); recalc()"></td>
+      <td><input type="number" value="${p.r}" oninput="products[${i}].r=+this.value||0; updRow(${i}); recalc()"></td>
+      <td><input type="number" value="${p.h}" oninput="products[${i}].h=+this.value||0; updRow(${i}); recalc()"></td>
+      <td id="cbm-${i}" style="padding:3px 8px;color:var(--muted)">${rowCBM(p)}</td>
+      <td><button class="btn-del" onclick="removeProduct(${i})">✕</button></td>
+    </tr>`).join('');
+  updTotals();
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function rowCBM(p) { return ((p.d||0)*(p.r||0)*(p.h||0)/1e6*(p.qty||0)).toFixed(4); }
+function updRow(i) { const el=document.getElementById('cbm-'+i); if(el) el.textContent=rowCBM(products[i]); updTotals(); }
+function updTotals() {
+  const qty = products.reduce((s,p)=>s+(p.qty||0), 0);
+  const w   = products.reduce((s,p)=>s+(p.qty||0)*(p.weight||0), 0);
+  const cbm = products.reduce((s,p)=>s+(p.qty||0)*(p.d||0)*(p.r||0)*(p.h||0)/1e6, 0);
+  const exw = products.reduce((s,p)=>s+(p.qty||0)*(p.exw||0), 0);
+  setText('t-qty',    qty.toLocaleString('vi-VN'));
+  setText('t-weight', w.toFixed(2)+' kg');
+  setText('t-cbm',    cbm.toFixed(4)+' CBM');
+  setText('t-exw',    '$'+exw.toFixed(2));
+}
+
+// ── COSTS ──
+function renderCosts() {
+  const exr = getV('exchange_rate', 26000);
+  document.getElementById('cost-rows').innerHTML = costs.map((c, i) => {
+    const vat = (c.vat !== undefined) ? c.vat : 8;
+    const tip = c.sub ? `<span class="tip-w"><button class="tip-ic" tabindex="0">?</button><span class="tip-box">${esc(c.sub)}</span></span>` : '';
+    return `<tr>
+      <td><div class="name-cell">
+        <input value="${esc(c.name)}" oninput="costs[${i}].name=this.value" style="font-weight:500">
+        ${tip}
+      </div></td>
+      <td><input type="number" id="cusd_${i}" value="${c.usd}" step="0.001"
+        oninput="costs[${i}].usd=+this.value||0; document.getElementById('cvnd_${i}').value=Math.round(costs[${i}].usd*getV('exchange_rate',26000)); recalc()"></td>
+      <td><input type="number" id="cvnd_${i}" value="${Math.round((c.usd||0)*exr)}"
+        oninput="costs[${i}].usd=(+this.value||0)/getV('exchange_rate',26000); document.getElementById('cusd_${i}').value=costs[${i}].usd.toFixed(3); recalc()"></td>
+      <td><select onchange="costs[${i}].unit=this.value;recalc()" style="font-size:11px">
+        <option value="/cont"     ${c.unit==='/cont'    ?'selected':''}>/cont</option>
+        <option value="/lô"       ${c.unit==='/lô'      ?'selected':''}>/ lô</option>
+        <option value="/cbm"      ${c.unit==='/cbm'     ?'selected':''}>/ CBM</option>
+        <option value="/kg"       ${c.unit==='/kg'      ?'selected':''}>/ kg</option>
+        <option value="/shipment" ${c.unit==='/shipment'?'selected':''}>/ shipment</option>
+      </select></td>
+      <td><select class="vat-s" onchange="costs[${i}].vat=+this.value;recalc()" title="VAT cho phí này">
+        <option value="0"  ${vat===0 ?'selected':''}>0%</option>
+        <option value="8"  ${vat===8 ?'selected':''}>8%</option>
+        <option value="10" ${vat===10?'selected':''}>10%</option>
+      </select></td>
+      <td><button class="btn-del" onclick="costs.splice(${i},1);renderCosts();recalc()">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+function addCostRow() {
+  const defVat = getV('default_vat', 8);
+  costs.push({name:'Chi phí khác', sub:'', usd:0, unit:'/lô', vat:defVat});
+  renderCosts();
+}
+
+// ── CORE CALC — đúng theo công thức Excel gốc ──
+// a = Tổng chi phí logistics (USD, trước VAT)
+// b = a × VAT%  (VAT chung cho toàn bộ tổng, mỗi dòng có thể chọn VAT riêng)
+// c = a + b     (Tổng có VAT)
+// d = c / số SP (Phí/sản phẩm)
+// e = EXW/sản phẩm
+// f = d + e     (Giá xưởng + phí)
+// g = thuế XK %
+// h = FOB = f / (1 - g)
+// i = Tổng cước biển/air (USD)
+// k = i / số SP (Cước/sản phẩm)
+// l = CNF = h + k
+// m = CIF = l / (1 - ins%)   [bảo hiểm tính trên giá CNF, ins% thường 0.15%]
+
+function getTotals() {
+  const exr    = getV('exchange_rate', 26000);
+  const insPct = getV('insurance_pct', 0.15) / 100;  // 0.15% → 0.0015
+  const taxPct = getV('export_tax_pct', 0)   / 100;
+
+  const totalQty    = products.reduce((s,p) => s+(p.qty||0), 0);
+  if (!totalQty) return null;
+  const totalWeight = products.reduce((s,p) => s+(p.qty||0)*(p.weight||0), 0);
+  const totalCBM    = products.reduce((s,p) => s+(p.qty||0)*(p.d||0)*(p.r||0)*(p.h||0)/1e6, 0);
+  const totalEXW    = products.reduce((s,p) => s+(p.qty||0)*(p.exw||0), 0);
+  const exwPU       = totalEXW / totalQty;  // e
+
+  // Chargeable weight cho hàng không
+  let chgKg = totalWeight;
+  if (transport === 'air_express') {
+    const volW = totalCBM * 1e6 / getV('ae_vol_div', 6000);
+    chgKg = Math.max(totalWeight, volW);
+  } else if (transport === 'air_cargo') {
+    const volW = totalCBM * 1e6 / getV('ac_vol_div', 6000);
+    chgKg = Math.max(totalWeight, volW);
+  }
+
+  const lclCBM = getV('lcl_cbm', 2);
+
+  // (a) Tổng phí logistics trước VAT — mỗi dòng có VAT% riêng
+  // Excel: VAT tính per-row rồi cộng lại → tổng (a) và tổng VAT (b)
+  let logRaw = 0; // a
+  let vatSum  = 0; // b
+  costs.forEach(c => {
+    const v    = c.usd || 0;
+    const vPct = (c.vat !== undefined ? c.vat : 8) / 100;
+    let line   = 0;
+    switch (c.unit) {
+      case '/cont':     line = v;              break; // 1 cont
+      case '/lô':       line = v;              break;
+      case '/shipment': line = v;              break;
+      case '/cbm':      line = v * (transport === 'lcl' ? lclCBM : totalCBM); break;
+      case '/kg':       line = v * chgKg;      break;
+      default:          line = v;
+    }
+    logRaw += line;
+    vatSum  += line * vPct;  // VAT riêng từng dòng
+  });
+
+  // Pallet cost — VAT 8% mặc định
+  const pallet = getV('pallet_cost', 0);
+  logRaw += pallet;
+  vatSum  += pallet * 0.08;
+
+  const logVAT = logRaw + vatSum;      // c = a + b
+  const logPU  = logVAT / totalQty;    // d = c / số SP
+  const fPU    = logPU + exwPU;        // f = d + e
+  const fobPU  = taxPct < 1 ? fPU / (1 - taxPct) : fPU;  // h = f / (1-g)
+
+  // (i) Tổng cước vận chuyển
+  let freightTotal = 0;
+  if (transport === 'fcl') {
+    freightTotal = getV('fcl_freight', 2800);  // USD/cont
+  } else if (transport === 'lcl') {
+    freightTotal = getV('lcl_freight', 800);   // USD/shipment
+  } else if (transport === 'air_express') {
+    const fuel = getV('ae_fuel', 20) / 100;
+    freightTotal = chgKg * getV('ae_rate', 4.5) * (1 + fuel);
+  } else { // air_cargo
+    const fuel = getV('ac_fuel', 15) / 100;
+    freightTotal = chgKg * getV('ac_rate', 2.5) * (1 + fuel);
+  }
+
+  // k = i / totalQty — dùng tổng SP từ bảng hàng hóa cho tất cả mode
+  const frPU  = freightTotal / totalQty;       // k
+  const cnfPU = fobPU + frPU;                          // l = h + k
+  // m = l / (1 - ins%)  — ins% thường nhỏ như 0.15%
+  const cifPU = insPct < 1 ? cnfPU / (1 - insPct) : cnfPU;
+  const insPU = cifPU - cnfPU;
+
+  return {
+    totalQty, totalWeight, totalCBM, totalEXW, chgKg,
+    logRaw, vatSum, logVAT, freightTotal,
+    exwPU, logPU, fPU, fobPU, frPU, cnfPU, insPU, cifPU,
+    exr, insPct, taxPct,
+    shipmentName: document.getElementById('shipment_name').value || '(chưa đặt tên)',
+    note: document.getElementById('note_extra').value || ''
+  };
+}
+
+// ── RENDER LIVE ──
+function recalc() {
+  const r = getTotals();
+  const noData = id => { const el=document.getElementById(id); if(el) el.innerHTML='<span class="no-data">—</span>'; };
+  if (!r) {
+    ['r-fob-usd','r-cnf-usd','r-cif-usd','r-fob-kg','r-cif-cbm','r-total-log','r-total-cif'].forEach(noData);
+    setText('r-fob-vnd','Điền thông tin để tính');
+    setText('r-cnf-vnd',''); setText('r-cif-vnd','');
+    document.getElementById('sum-table').innerHTML = '';
+    return;
+  }
+  lastR = r;
+
+  const unit = (products[0] && products[0].unit) || 'cái';
+  const f4   = v => '$' + v.toFixed(4);
+  const fv   = v => Math.round(v * r.exr).toLocaleString('vi-VN') + ' ₫';
+
+  setText('r-fob-usd', f4(r.fobPU)); setText('r-fob-vnd', fv(r.fobPU) + ' / ' + unit);
+  setText('r-cnf-usd', f4(r.cnfPU)); setText('r-cnf-vnd', fv(r.cnfPU) + ' / ' + unit);
+  setText('r-cif-usd', f4(r.cifPU)); setText('r-cif-vnd', fv(r.cifPU) + ' / ' + unit);
+
+  const fobKg  = r.totalWeight > 0 ? r.fobPU * r.totalQty / r.totalWeight : 0;
+  const cifCBM = r.totalCBM   > 0 ? r.cifPU * r.totalQty / r.totalCBM   : 0;
+  setText('r-fob-kg',    '$' + fobKg.toFixed(4) + '/kg');
+  setText('r-cif-cbm',   '$' + cifCBM.toFixed(2) + '/CBM');
+  setText('r-total-log', '$' + r.logVAT.toFixed(2) + ' (incl. VAT)');
+  setText('r-total-cif', '$' + (r.cifPU * r.totalQty).toFixed(2));
+
+  const rows = [
+    {sep: '— (a→c) CHI PHÍ LOGISTICS —'},
+    {l:'(a) Tổng phí trước VAT',                          v:r.logRaw},
+    {l:'(b) Tổng VAT (mỗi dòng phí có VAT riêng)',        v:r.vatSum},
+    {l:'(c) Tổng phí có VAT = a + b',                     v:r.logVAT},
+    {l:'(d) Phí / '+unit+' = c ÷ '+r.totalQty.toLocaleString('vi-VN')+' SP', v:r.logPU},
+    {sep: '— (e→m) TÍNH GIÁ —'},
+    {l:'(e) Giá EXW / '+unit,                              v:r.exwPU},
+    {l:'(f) Xưởng + phí = d + e',                         v:r.fPU},
+    {l:'(g) Thuế XK: '+(r.taxPct*100).toFixed(1)+'%',     v:r.fPU * r.taxPct},
+    {l:'(h) FOB = f ÷ (1 − g)',                           v:r.fobPU, bold:true},
+    {l:'(i) Tổng cước: $'+r.freightTotal.toFixed(2),       v:null, info:true},
+    {l:'(k) Cước / '+unit+' = i ÷ số SP',                 v:r.frPU},
+    {l:'(l) CNF = h + k',                                  v:r.cnfPU, bold:true},
+    {l:'Bảo hiểm '+(r.insPct*100).toFixed(3)+'% = CIF−CNF',v:r.insPU},
+    {l:'(m) CIF = l ÷ (1 − '+(r.insPct*100).toFixed(3)+'%)', v:r.cifPU, bold:true},
+  ];
+  document.getElementById('sum-table').innerHTML =
+    '<thead><tr><th>Hạng mục</th><th style="text-align:right">USD/'+unit+'</th><th style="text-align:right">VND/'+unit+'</th></tr></thead><tbody>' +
+    rows.map(row => {
+      if (row.sep)  return `<tr class="sep"><td colspan="3">${row.sep}</td></tr>`;
+      if (row.info) return `<tr><td colspan="3" style="color:var(--muted);font-size:11px;padding:4px 7px">${row.l}</td></tr>`;
+      return `<tr class="${row.bold?'bold':''}"><td>${row.l}</td><td style="text-align:right">${f4(row.v)}</td><td style="text-align:right">${fv(row.v)}</td></tr>`;
+    }).join('') + '</tbody>';
+}
+
+// ── HELPERS ──
+function setText(id, t) { const el=document.getElementById(id); if(el) el.textContent=t; }
+function getV(id, def=0) { const el=document.getElementById(id); return el ? (+el.value||def) : def; }
+function toggleDetail(btn) {
+  const b = document.getElementById('detail-body');
+  btn.textContent = b.classList.toggle('open') ? '▲ Ẩn chi tiết' : '▼ Xem chi tiết breakdown';
+}
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-calc').style.display  = tab==='calc'  ? '' : 'none';
+  document.getElementById('tab-saved').style.display = tab==='saved' ? '' : 'none';
+  if (tab === 'saved') renderSaved();
+}
+function resetForm() {
+  if (!confirm('Làm lại từ đầu?')) return;
+  products = [{name:'Sản phẩm 1', unit:'Cái', qty:115000, exw:0.7, weight:0.2, d:10, r:10, h:10}];
+  costs    = DC[transport].map(c => ({...c}));
+  document.getElementById('shipment_name').value = '';
+  document.getElementById('note_extra').value    = '';
+  renderProducts(); renderCosts(); recalc();
+}
+
+// ── SAVE ──
+function saveResult() {
+  if (!lastR) { alert('Chưa có kết quả!'); return; }
+  const name = prompt('Đặt tên kết quả:') || 'Kết quả ' + (saved.length + 1);
+  saved.unshift({name, transport, products:products.map(p=>({...p})), costs:costs.map(c=>({...c})), r:{...lastR}, ts:new Date().toLocaleString('vi-VN')});
+  document.getElementById('saved-count').textContent = saved.length;
+  alert('✅ Đã lưu: ' + name);
+}
+function renderSaved() {
+  const el = document.getElementById('saved-list');
+  const em = document.getElementById('saved-empty');
+  if (!saved.length) { em.style.display=''; el.innerHTML=''; return; }
+  em.style.display = 'none';
+  el.innerHTML = saved.map((s, i) => `
+    <div class="saved-item">
+      <span class="badge ${BC[s.transport]}">${BL[s.transport]}</span>
+      <div class="saved-name">${esc(s.name)}<small>${s.ts} · ${(s.products[0]&&s.products[0].unit)||'cái'}</small></div>
+      <div class="saved-vals">
+        <span>FOB: <b>$${s.r.fobPU.toFixed(4)}</b></span>
+        <span>CNF: <b>$${s.r.cnfPU.toFixed(4)}</b></span>
+        <span>CIF: <b>$${s.r.cifPU.toFixed(4)}</b></span>
+      </div>
+      <button class="btn-xl" onclick="exportExcelSaved(${i})" style="font-size:11px;padding:5px 10px">📊</button>
+      <button class="btn-del" onclick="saved.splice(${i},1);document.getElementById('saved-count').textContent=saved.length;renderSaved()">✕</button>
+    </div>`).join('');
+}
+function clearSaved() { if(confirm('Xóa tất cả?')){ saved=[]; document.getElementById('saved-count').textContent=0; renderSaved(); } }
+
+// ── EXCEL ──
+function xlsxOK() { return typeof XLSX !== 'undefined' && !window._xlsxFail; }
+function buildWB(sObj) {
+  if (!xlsxOK()) { alert('Thư viện Excel chưa tải — cần kết nối internet lần đầu!'); return null; }
+  const r = sObj ? sObj.r : lastR;
+  const prods = sObj ? sObj.products : products;
+  const cs    = sObj ? sObj.costs    : costs;
+  const tr    = sObj ? sObj.transport: transport;
+  const unit  = (prods[0]&&prods[0].unit)||'cái';
+  const wb = XLSX.utils.book_new();
+
+  const f4 = v => +v.toFixed(4);
+  const sum = [
+    ['BẢNG TÍNH GIÁ FOB/CNF/CIF — '+r.shipmentName],[],
+    ['Phương thức', TL[tr]], ['Ngày tính', new Date().toLocaleString('vi-VN')],
+    ['Tỷ giá USD/VND', r.exr], ['Ghi chú', r.note||''], [],
+    ['THÔNG SỐ LÔ HÀNG'],
+    ['Tổng số lượng ('+unit+')', r.totalQty],
+    ['Tổng khối lượng (kg)', +r.totalWeight.toFixed(2)],
+    ['Tổng thể tích (CBM)', +r.totalCBM.toFixed(4)],
+    ['Tổng EXW (USD)', +r.totalEXW.toFixed(2)],[],
+    ['CÔNG THỨC TÍNH', 'USD/'+unit, 'VND/'+unit],
+    ['(a) Tổng phí trước VAT', f4(r.logRaw), Math.round(r.logRaw*r.exr)],
+    ['(b) Tổng VAT (per dòng)', f4(r.vatSum), Math.round(r.vatSum*r.exr)],
+    ['(c) Tổng phí có VAT = a+b', f4(r.logVAT), Math.round(r.logVAT*r.exr)],
+    ['(d) Phí/'+unit, f4(r.logPU), Math.round(r.logPU*r.exr)],
+    ['(e) Giá EXW/'+unit, f4(r.exwPU), Math.round(r.exwPU*r.exr)],
+    ['(f) Xưởng+phí = d+e', f4(r.fPU), Math.round(r.fPU*r.exr)],
+    ['(h) FOB = f÷(1−thuế XK%)', f4(r.fobPU), Math.round(r.fobPU*r.exr)],
+    ['(k) Cước/'+unit, f4(r.frPU), Math.round(r.frPU*r.exr)],
+    ['(l) CNF = FOB+k', f4(r.cnfPU), Math.round(r.cnfPU*r.exr)],
+    ['Bảo hiểm', f4(r.insPU), Math.round(r.insPU*r.exr)],
+    ['(m) CIF = CNF÷(1−ins%)', f4(r.cifPU), Math.round(r.cifPU*r.exr)],[],
+    ['Tổng CIF lô hàng (USD)', +(r.cifPU*r.totalQty).toFixed(2)],
+  ];
+  const ws1 = XLSX.utils.aoa_to_sheet(sum);
+  ws1['!cols'] = [{wch:38},{wch:18},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Kết quả');
+
+  const pd = [['Tên hàng','ĐVT','Số lượng','EXW (USD)','KL/cái (kg)','D (cm)','R (cm)','C (cm)','CBM/cái','Tổng CBM','Tổng EXW (USD)']];
+  prods.forEach(p => { const cbm=(p.d||0)*(p.r||0)*(p.h||0)/1e6; pd.push([p.name,p.unit,p.qty,p.exw,p.weight,p.d,p.r,p.h,+cbm.toFixed(6),+(p.qty*cbm).toFixed(4),+(p.qty*p.exw).toFixed(2)]); });
+  const ws2 = XLSX.utils.aoa_to_sheet(pd);
+  ws2['!cols'] = Array(11).fill({wch:14});
+  XLSX.utils.book_append_sheet(wb, ws2, 'Hàng hóa');
+
+  const cd = [['STT','Hạng mục','Mô tả','USD','VND','Đơn vị','VAT%']];
+  cs.forEach((c,i) => cd.push([i+1,c.name,c.sub||'',c.usd,Math.round(c.usd*r.exr),c.unit,(c.vat!==undefined?c.vat:8)+'%']));
+  cd.push(['','TỔNG TRƯỚC VAT (a)','',+r.logRaw.toFixed(2),'','','']);
+  cd.push(['','TỔNG VAT (b)','',+r.vatSum.toFixed(2),'','','']);
+  cd.push(['','TỔNG CÓ VAT (c)','',+r.logVAT.toFixed(2),'','','']);
+  const ws3 = XLSX.utils.aoa_to_sheet(cd);
+  ws3['!cols'] = [{wch:5},{wch:28},{wch:35},{wch:10},{wch:16},{wch:12},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Chi phí logistics');
+
+  return wb;
+}
+function exportExcel() {
+  if (!lastR) { alert('Chưa có kết quả!'); return; }
+  const wb = buildWB(null); if (!wb) return;
+  XLSX.writeFile(wb, 'ShippingCalc_' + (lastR.shipmentName||'export') + '_' + Date.now() + '.xlsx');
+}
+function exportExcelSaved(i) { const wb=buildWB(saved[i]); if(wb) XLSX.writeFile(wb,'ShippingCalc_'+saved[i].name+'.xlsx'); }
+function exportAllExcel() {
+  if (!saved.length) { alert('Chưa có kết quả!'); return; }
+  if (!xlsxOK()) { alert('Thư viện Excel chưa tải!'); return; }
+  const wb = XLSX.utils.book_new();
+  const rows = [['Tên lô','Phương thức','Ngày','SL','FOB','CNF','CIF (USD)','CIF (VND)','Tổng CBM','Tổng CIF (USD)']];
+  saved.forEach(s => rows.push([s.name,TL[s.transport],s.ts,s.r.totalQty,+s.r.fobPU.toFixed(4),+s.r.cnfPU.toFixed(4),+s.r.cifPU.toFixed(4),Math.round(s.r.cifPU*s.r.exr),+s.r.totalCBM.toFixed(4),+(s.r.cifPU*s.r.totalQty).toFixed(2)]));
+  const ws = XLSX.utils.aoa_to_sheet(rows); ws['!cols']=Array(10).fill({wch:16});
+  XLSX.utils.book_append_sheet(wb, ws, 'Tổng hợp');
+  saved.forEach((s,i) => {
+    const wt = buildWB(s); if (!wt) return;
+    ['Kết quả','Hàng hóa','Chi phí logistics'].forEach(sn => {
+      if (wt.Sheets[sn]) { const nn=('KQ'+(i+1)+'_'+sn).substring(0,31); wb.Sheets[nn]=wt.Sheets[sn]; wb.SheetNames.push(nn); }
+    });
+  });
+  XLSX.writeFile(wb, 'ShippingCalc_TatCa_' + Date.now() + '.xlsx');
+}
+
+// ── PDF ──
+function exportPDF() {
+  if (!lastR) { alert('Chưa có kết quả!'); return; }
+  const r = lastR;
+  const unit = (products[0]&&products[0].unit)||'cái';
+  const f4 = v => '$'+v.toFixed(4);
+  const fv = v => Math.round(v*r.exr).toLocaleString('vi-VN')+' ₫';
+  const LOGO = 'data:image/png;base64,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';
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Shipping — ${r.shipmentName}</title>
+  <style>body{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;margin:20px;color:#111}
+  .hdr{display:flex;align-items:center;gap:12px;border-bottom:2px solid #1a56db;padding-bottom:8px;margin-bottom:12px}
+  .hdr img{width:48px;height:48px;border-radius:50%;object-fit:contain}
+  .hdr h1{font-size:15px;color:#1a56db;margin:0}.hdr p{font-size:10px;color:#6b7280;margin:2px 0 0}
+  .meta{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:10px}
+  .mi{background:#f3f4f6;padding:6px;border-radius:4px}.mi b{display:block;color:#6b7280;font-size:9px;margin-bottom:1px}
+  .rg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin:8px 0}
+  .rc{border:1px solid #e5e7eb;border-radius:4px;padding:7px;text-align:center}
+  .rc.hi{border-color:#1a56db;background:#eff6ff}
+  .rl{font-size:9px;color:#6b7280;margin-bottom:2px}.rv{font-size:15px;font-weight:700;color:#1a56db}.rs{font-size:9px;color:#6b7280}
+  h2{font-size:11px;color:#374151;margin:10px 0 4px;border-left:3px solid #1a56db;padding-left:6px}
+  table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:10px}
+  th{background:#1a56db;color:#fff;padding:5px 6px;text-align:left;font-weight:500}
+  td{padding:4px 6px;border-bottom:1px solid #e5e7eb}
+  .bold{background:#eff6ff;font-weight:700}.sep{background:#f8fafc;font-size:9px;color:#6b7280;font-weight:600}
+  .foot{margin-top:12px;font-size:9px;color:#9ca3af;text-align:center;border-top:1px solid #e5e7eb;padding-top:6px}
+  </style></head><body>
+  <div class="hdr"><img src="${LOGO}" alt="Logo"><div><h1>Shipping Cost Calculator</h1><p>Bảng tính giá FOB / CNF / CIF tham khảo</p></div></div>
+  <div class="meta">
+    <div class="mi"><b>Lô hàng</b>${r.shipmentName}</div>
+    <div class="mi"><b>Phương thức</b>${TL[transport]}</div>
+    <div class="mi"><b>Ngày tính</b>${new Date().toLocaleString('vi-VN')}</div>
+    <div class="mi"><b>Số lượng</b>${r.totalQty.toLocaleString()} ${unit}</div>
+    <div class="mi"><b>Tổng KL</b>${r.totalWeight.toFixed(2)} kg</div>
+    <div class="mi"><b>Tổng CBM</b>${r.totalCBM.toFixed(4)}</div>
+    <div class="mi"><b>Tỷ giá</b>${r.exr.toLocaleString()} VND/USD</div>
+    <div class="mi"><b>Tổng EXW</b>$${r.totalEXW.toFixed(2)}</div>
+    <div class="mi"><b>Tổng CIF lô</b>$${(r.cifPU*r.totalQty).toFixed(2)}</div>
+  </div>
+  <div class="rg">
+    <div class="rc"><div class="rl">FOB / ${unit}</div><div class="rv">${f4(r.fobPU)}</div><div class="rs">${fv(r.fobPU)}</div></div>
+    <div class="rc"><div class="rl">CNF / ${unit}</div><div class="rv">${f4(r.cnfPU)}</div><div class="rs">${fv(r.cnfPU)}</div></div>
+    <div class="rc hi"><div class="rl">CIF / ${unit}</div><div class="rv">${f4(r.cifPU)}</div><div class="rs">${fv(r.cifPU)}</div></div>
+  </div>
+  <h2>Chi tiết công thức tính giá</h2>
+  <table><thead><tr><th>Hạng mục</th><th>USD/${unit}</th><th>VND/${unit}</th></tr></thead><tbody>
+  <tr class="sep"><td colspan="3">— CHI PHÍ LOGISTICS —</td></tr>
+  <tr><td>(a) Tổng phí trước VAT</td><td>${f4(r.logRaw)}</td><td>${fv(r.logRaw)}</td></tr>
+  <tr><td>(b) Tổng VAT (mỗi dòng riêng)</td><td>${f4(r.vatSum)}</td><td>${fv(r.vatSum)}</td></tr></td></tr>
+  <tr><td>(c) Tổng phí có VAT = a+b</td><td>${f4(r.logVAT)}</td><td>${fv(r.logVAT)}</td></tr>
+  <tr><td>(d) Phí / ${unit} = c ÷ SL</td><td>${f4(r.logPU)}</td><td>${fv(r.logPU)}</td></tr>
+  <tr class="sep"><td colspan="3">— TÍNH GIÁ —</td></tr>
+  <tr><td>(e) Giá EXW / ${unit}</td><td>${f4(r.exwPU)}</td><td>${fv(r.exwPU)}</td></tr>
+  <tr><td>(f) Xưởng + phí = d+e</td><td>${f4(r.fPU)}</td><td>${fv(r.fPU)}</td></tr>
+  <tr class="bold"><td>(h) Giá FOB</td><td>${f4(r.fobPU)}</td><td>${fv(r.fobPU)}</td></tr>
+  <tr><td>(k) Cước vận chuyển / ${unit}</td><td>${f4(r.frPU)}</td><td>${fv(r.frPU)}</td></tr>
+  <tr class="bold"><td>(l) Giá CNF</td><td>${f4(r.cnfPU)}</td><td>${fv(r.cnfPU)}</td></tr>
+  <tr><td>Bảo hiểm</td><td>${f4(r.insPU)}</td><td>${fv(r.insPU)}</td></tr>
+  <tr class="bold"><td>(m) Giá CIF</td><td>${f4(r.cifPU)}</td><td>${fv(r.cifPU)}</td></tr>
+  </tbody></table>
+  <h2>Danh sách hàng hóa</h2>
+  <table><thead><tr><th>Tên hàng</th><th>ĐVT</th><th>Số lượng</th><th>EXW/cái</th><th>KL/cái</th><th>Tổng CBM</th></tr></thead><tbody>
+  ${products.map(p=>`<tr><td>${esc(p.name)}</td><td>${p.unit}</td><td>${(p.qty||0).toLocaleString()}</td><td>$${p.exw}</td><td>${p.weight}kg</td><td>${((p.d||0)*(p.r||0)*(p.h||0)/1e6*(p.qty||0)).toFixed(4)}</td></tr>`).join('')}
+  </tbody></table>
+  <h2>Chi phí logistics</h2>
+  <table><thead><tr><th>STT</th><th>Hạng mục</th><th>USD</th><th>Đơn vị</th><th>VAT</th></tr></thead><tbody>
+  ${costs.map((c,i)=>`<tr><td>${i+1}</td><td>${esc(c.name)}</td><td>$${c.usd}</td><td>${c.unit}</td><td>${c.vat!==undefined?c.vat:8}%</td></tr>`).join('')}
+  <tr class="bold"><td colspan="2">Tổng có VAT</td><td>$${r.logVAT.toFixed(2)}</td><td colspan="2"></td></tr>
+  </tbody></table>
+  <div class="foot">Tạo bởi Shipping Cost Calculator · ${new Date().toLocaleString('vi-VN')} · Số liệu chỉ mang tính tham khảo.</div>
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { alert('Trình duyệt chặn popup! Cho phép popup để xuất PDF.'); return; }
+  w.document.write(html); w.document.close();
+}
+
+// ── INIT ──
+setInterval(() => setText('clock', new Date().toLocaleString('vi-VN')), 1000);
+setText('clock', new Date().toLocaleString('vi-VN'));
+
+products = [{name:'Sản phẩm 1', unit:'Cái', qty:115000, exw:0.7, weight:0.2, d:10, r:10, h:10}];
+costs    = DC.fcl.map(c => ({...c}));
+renderProducts();
+renderCosts();
+recalc();
+</script>
+</body>
+</html>
